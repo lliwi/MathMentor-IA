@@ -1,0 +1,71 @@
+{% extends "base/base.html" %}
+
+{% block title %}Asignar Temas - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2 class="mb-4"><i class="bi bi-person-gear"></i> Asignar Temas a {{ student.username }}</h2>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="course" class="form-label">Curso</label>
+                        <input type="text" class="form-control" id="course" name="course"
+                               value="{% if student.student_profile %}{{ student.student_profile.course }}{% endif %}"
+                               placeholder="Ej: 1º ESO, 2º Bachillerato" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Temas Asignados</label>
+
+                        {% if books %}
+                            {% for book in books %}
+                            <div class="card mb-2">
+                                <div class="card-header">
+                                    <strong>{{ book.title }}</strong> - {{ book.course }}
+                                </div>
+                                <div class="card-body">
+                                    {% if book.topics.count() > 0 %}
+                                    <div class="form-check-group">
+                                        {% for topic in book.topics %}
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="topics" value="{{ topic.id }}"
+                                                   id="topic_{{ topic.id }}"
+                                                   {% if student.student_profile and topic.id in student.student_profile.get_topics() %}checked{% endif %}>
+                                            <label class="form-check-label" for="topic_{{ topic.id }}">
+                                                {{ topic.topic_name }}
+                                                {% if topic.description %}
+                                                <small class="text-muted">- {{ topic.description[:100] }}</small>
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted mb-0">No hay temas disponibles para este libro.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="alert alert-warning">
+                                No hay libros procesados disponibles. Por favor, sube y procesa libros primero.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-lg"></i> Guardar Asignación
+                        </button>
+                        <a href="{{ url_for('admin.students') }}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

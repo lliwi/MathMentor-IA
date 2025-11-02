@@ -1,0 +1,63 @@
+{% extends "base/base.html" %}
+
+{% block title %}Gestionar Estudiantes - MathMentor IA{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-people"></i> Estudiantes</h2>
+
+{% if students %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Curso</th>
+                <th>Temas Asignados</th>
+                <th>Puntos</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <td>{{ student.username }}</td>
+                <td>{{ student.email }}</td>
+                <td>
+                    {% if student.student_profile %}
+                        {{ student.student_profile.course }}
+                    {% else %}
+                        <span class="text-muted">No asignado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if student.student_profile and student.student_profile.get_topics() %}
+                        {{ student.student_profile.get_topics()|length }} temas
+                    {% else %}
+                        <span class="text-muted">Sin temas</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if student.student_score %}
+                        {{ student.student_score.available_points }} pts
+                    {% else %}
+                        0 pts
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('admin.assign_topics', student_id=student.id) }}"
+                       class="btn btn-sm btn-primary">
+                        <i class="bi bi-gear"></i> Asignar Temas
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No hay estudiantes registrados aún.
+</div>
+{% endif %}
+{% endblock %}

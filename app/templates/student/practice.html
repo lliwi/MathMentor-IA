@@ -1,0 +1,346 @@
+{% extends "base/base.html" %}
+
+{% block title %}Practicar - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4"><i class="bi bi-pencil-square"></i> Área de Práctica</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="exercise-container" id="exercise-area">
+            <div id="no-exercise" class="text-center py-5">
+                <i class="bi bi-lightbulb" style="font-size: 4rem; color: #ffc107;"></i>
+                <h4 class="mt-3">¿Listo para practicar?</h4>
+                <p class="text-muted">Genera un ejercicio para comenzar</p>
+
+                <div class="mt-4">
+                    <label class="form-label">Dificultad:</label>
+                    <select class="form-select w-50 mx-auto" id="difficulty-select">
+                        <option value="easy">Fácil</option>
+                        <option value="medium" selected>Medio</option>
+                        <option value="hard">Difícil</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary btn-lg mt-4" id="generate-btn">
+                    <i class="bi bi-stars"></i> Generar Ejercicio
+                </button>
+            </div>
+
+            <div id="exercise-display" class="d-none">
+                <div class="alert alert-info">
+                    <strong>Tema:</strong> <span id="exercise-topic"></span><br>
+                    <strong>Dificultad:</strong> <span id="exercise-difficulty"></span>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-question-circle"></i> Ejercicio</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="exercise-content" class="fs-5"></div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="student-answer" class="form-label"><strong>Tu Respuesta:</strong></label>
+                    <textarea class="form-control" id="student-answer" rows="3" placeholder="Escribe tu respuesta aquí..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><strong>Procedimientos/Técnicas Utilizadas:</strong></label>
+                    <div class="card">
+                        <div class="card-body" id="procedures-list">
+                            <p class="text-muted">Selecciona todos los procedimientos, técnicas o propiedades que utilizaste para resolver este ejercicio.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success btn-lg" id="submit-btn">
+                        <i class="bi bi-check-circle"></i> Enviar Respuesta
+                    </button>
+                    <button class="btn btn-warning" id="hint-btn">
+                        <i class="bi bi-lightbulb"></i> Comprar Pista (5 puntos)
+                    </button>
+                </div>
+
+                <div id="hint-display" class="alert alert-warning mt-3 d-none">
+                    <h6><i class="bi bi-lightbulb-fill"></i> Pista:</h6>
+                    <p id="hint-text"></p>
+                </div>
+            </div>
+
+            <div id="feedback-display" class="d-none mt-4">
+                <!-- Feedback will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> Tu Progreso</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="score-badge bg-primary text-white mb-3">
+                    <span id="points-display">{{ stats.available_points if stats else 0 }}</span>
+                </div>
+                <p><strong>Puntos Disponibles</strong></p>
+
+                <hr>
+
+                <div class="streak-indicator mb-2">
+                    <i class="bi bi-fire"></i> Racha: <span id="streak-display">{{ stats.current_streak if stats else 0 }}</span>
+                </div>
+
+                <p class="text-muted small mt-3">
+                    <strong>Precisión:</strong> {{ stats.accuracy_rate if stats else 0 }}%<br>
+                    <strong>Ejercicios:</strong> {{ stats.total_exercises if stats else 0 }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Marked.js for Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- MathJax for LaTeX rendering -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<script>
+// Configure marked to support line breaks
+marked.setOptions({
+    breaks: true,
+    gfm: true
+});
+
+let currentExerciseId = null;
+let currentProcedures = [];
+
+document.getElementById('generate-btn').addEventListener('click', generateExercise);
+document.getElementById('submit-btn').addEventListener('click', submitExercise);
+document.getElementById('hint-btn').addEventListener('click', buyHint);
+
+function generateExercise() {
+    const difficulty = document.getElementById('difficulty-select').value;
+    const btn = document.getElementById('generate-btn');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generando...';
+
+    fetch('{{ url_for("student.generate_exercise") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ difficulty: difficulty })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentExerciseId = data.exercise.id;
+            currentProcedures = data.exercise.available_procedures || [];
+
+            document.getElementById('exercise-content').textContent = data.exercise.content;
+            document.getElementById('exercise-topic').textContent = data.exercise.topic;
+            document.getElementById('exercise-difficulty').textContent = data.exercise.difficulty;
+
+            // Populate procedures checkboxes
+            displayProcedures(currentProcedures);
+
+            document.getElementById('no-exercise').classList.add('d-none');
+            document.getElementById('exercise-display').classList.remove('d-none');
+            document.getElementById('feedback-display').classList.add('d-none');
+            document.getElementById('hint-display').classList.add('d-none');
+
+            // Clear previous answers
+            document.getElementById('student-answer').value = '';
+        } else {
+            alert('Error: ' + data.message);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars"></i> Generar Ejercicio';
+    })
+    .catch(error => {
+        alert('Error al generar ejercicio');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars"></i> Generar Ejercicio';
+    });
+}
+
+function displayProcedures(procedures) {
+    const listDiv = document.getElementById('procedures-list');
+
+    if (!procedures || procedures.length === 0) {
+        listDiv.innerHTML = '<p class="text-muted">No hay procedimientos disponibles para este ejercicio.</p>';
+        return;
+    }
+
+    let html = '<p class="text-muted mb-3">Selecciona todos los procedimientos, técnicas o propiedades que utilizaste:</p>';
+
+    procedures.forEach(proc => {
+        const description = proc.description || 'Sin descripción disponible';
+        html += `
+            <div class="form-check mb-2 procedure-item">
+                <input class="form-check-input" type="checkbox" value="${proc.id}" id="proc-${proc.id}">
+                <label class="form-check-label" for="proc-${proc.id}"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="right"
+                       data-bs-html="true"
+                       title="<strong>${proc.name}</strong><br>${description}">
+                    ${proc.name} <i class="bi bi-info-circle text-muted"></i>
+                </label>
+            </div>
+        `;
+    });
+
+    listDiv.innerHTML = html;
+
+    // Initialize Bootstrap tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+}
+
+function getSelectedProcedures() {
+    const checkboxes = document.querySelectorAll('#procedures-list input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => parseInt(cb.value));
+}
+
+function submitExercise() {
+    const answer = document.getElementById('student-answer').value;
+    const selectedProcedures = getSelectedProcedures();
+
+    if (!answer.trim()) {
+        alert('Por favor escribe tu respuesta');
+        return;
+    }
+
+    if (currentProcedures.length > 0 && selectedProcedures.length === 0) {
+        alert('Por favor selecciona al menos un procedimiento/técnica utilizada');
+        return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Evaluando...';
+
+    fetch('{{ url_for("student.submit_exercise") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            exercise_id: currentExerciseId,
+            answer: answer,
+            methodology: '',
+            selected_procedures: selectedProcedures
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayFeedback(data.evaluation);
+            updateProgress(data.evaluation);
+        } else {
+            alert('Error: ' + data.message);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Enviar Respuesta';
+    })
+    .catch(error => {
+        alert('Error al evaluar ejercicio');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Enviar Respuesta';
+    });
+}
+
+function displayFeedback(evaluation) {
+    const feedbackDiv = document.getElementById('feedback-display');
+    const isCorrect = evaluation.is_correct;
+
+    let feedbackClass = isCorrect ? 'success' : 'error';
+    let icon = isCorrect ? 'check-circle-fill' : 'x-circle-fill';
+    let title = isCorrect ? '¡Excelente! Respuesta correcta' : 'Respuesta incorrecta';
+
+    // Render markdown feedback to HTML
+    const feedbackHTML = marked.parse(evaluation.feedback);
+
+    feedbackDiv.innerHTML = `
+        <div class="feedback-box ${feedbackClass}">
+            <h4><i class="bi bi-${icon}"></i> ${title}</h4>
+            <p><strong>Puntos obtenidos:</strong> ${evaluation.score}</p>
+            ${evaluation.streak_bonus > 0 ? `<p><strong>¡Bonus por racha!</strong> +${evaluation.streak_bonus} puntos</p>` : ''}
+            <hr>
+            <div class="feedback-text markdown-content">
+                ${feedbackHTML}
+            </div>
+            ${!isCorrect ? '<button class="btn btn-primary mt-3" onclick="retryExercise()"><i class="bi bi-arrow-repeat"></i> Reintentar (+3 puntos por esfuerzo)</button>' : ''}
+            <button class="btn btn-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle"></i> Nuevo Ejercicio</button>
+        </div>
+    `;
+
+    feedbackDiv.classList.remove('d-none');
+
+    // Render LaTeX math with MathJax
+    if (typeof MathJax !== 'undefined') {
+        MathJax.typesetPromise([feedbackDiv]).catch((err) => console.log('MathJax error:', err));
+    }
+}
+
+function updateProgress(evaluation) {
+    document.getElementById('points-display').textContent = evaluation.available_points;
+    document.getElementById('streak-display').textContent = evaluation.current_streak;
+}
+
+function buyHint() {
+    if (!currentExerciseId) return;
+
+    if (!confirm('¿Comprar una pista por 5 puntos?')) return;
+
+    fetch('{{ url_for("student.buy_hint") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ exercise_id: currentExerciseId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('hint-text').textContent = data.hint;
+            document.getElementById('hint-display').classList.remove('d-none');
+            alert(data.message);
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+function retryExercise() {
+    document.getElementById('feedback-display').classList.add('d-none');
+    document.getElementById('student-answer').value = '';
+
+    // Uncheck all procedures
+    const checkboxes = document.querySelectorAll('#procedures-list input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = false);
+
+    document.getElementById('student-answer').focus();
+}
+
+function newExercise() {
+    document.getElementById('exercise-display').classList.add('d-none');
+    document.getElementById('feedback-display').classList.add('d-none');
+    document.getElementById('no-exercise').classList.remove('d-none');
+}
+</script>
+{% endblock %}

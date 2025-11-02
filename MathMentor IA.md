@@ -9,6 +9,7 @@
 * **Generación de Ejercicios Personalizados:** La IA genera problemas matemáticos directamente basados en el contenido de libros de texto específicos y en los temas seleccionados.
 * **Corrección Inteligente con Feedback Didáctico:** No solo verifica la respuesta, sino que analiza la ejecución, detecta errores de procedimiento o conceptuales y explica detalladamente dónde y por qué se cometieron los fallos, actuando como un verdadero tutor.
 * **Sistema de Puntuación (Gamificación):** Se integra un sistema de puntos para motivar al estudiante a través de la recompensa del esfuerzo y la precisión.
+Con los puntos obtenidos, el estudiante prodá comprar pistas/ayudas para los siguientes ejercicios.
 * **Base de Conocimiento Curricular (RAG):** Los libros en PDF se procesan para construir una base de conocimiento robusta y contextualizada, garantizando que los ejercicios y las explicaciones estén perfectamente alineados con el material de estudio.
 
 ---
@@ -35,6 +36,8 @@ El alumno podrá visualizar un **marcador personal** con su progreso y puntos ac
 La aplicación cuenta con un sistema de inicio de sesión seguro con dos roles definidos:
 
 1.  **Administrador:** Acceso a la gestión de contenido, configuración del sistema y monitorización de uso.
+Seleccionar los temas de estudio para cada uno de los alumnos.
+
 2.  **Alumno:** Acceso a la práctica, el estudio y el sistema de puntuación.
 
 ### 📚 Funcionalidades para el Administrador
@@ -47,7 +50,7 @@ La aplicación cuenta con un sistema de inicio de sesión seguro con dos roles d
 
 ### 🧑‍🎓 Flujo de Trabajo para el Alumno
 
-1.  **Selección de Contexto:** El alumno selecciona su **Curso** y el **Tema** + **Sub tema** específicos a practicar, extraído por la IA de los libros cargados.
+1.  **Selección de Contexto:** Contexto automatico según la ficha del alumno, de donde se obtendra el curso y los temas seleccionados por el adminitrador.
 2.  **Generación de Ejercicio:** La IA (utilizando el motor configurado y la información del RAG) **propone un ejercicio** relevante al tema y nivel.
 3.  **Resolución y Envío:** El alumno resuelve el ejercicio.
 4.  **Corrección, Feedback y Puntuación:**

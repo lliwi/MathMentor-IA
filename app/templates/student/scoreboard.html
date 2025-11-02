@@ -1,0 +1,157 @@
+{% extends "base/base.html" %}
+
+{% block title %}Mi Marcador - MathMentor IA{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-trophy"></i> Mi Marcador</h2>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-star-fill text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ stats.available_points }}</h3>
+                <p class="text-muted mb-0">Puntos Disponibles</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-fire text-danger" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ stats.current_streak }}</h3>
+                <p class="text-muted mb-0">Racha Actual</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-trophy-fill text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ stats.best_streak }}</h3>
+                <p class="text-muted mb-0">Mejor Racha</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-bullseye text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ stats.accuracy_rate }}%</h3>
+                <p class="text-muted mb-0">Precisión</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Estadísticas Generales</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Total de Puntos Ganados:</strong></td>
+                        <td class="text-end">{{ stats.total_points }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Puntos Gastados:</strong></td>
+                        <td class="text-end">{{ stats.points_spent }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Puntos Disponibles:</strong></td>
+                        <td class="text-end"><strong>{{ stats.available_points }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ejercicios Completados:</strong></td>
+                        <td class="text-end">{{ stats.total_exercises }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ejercicios Correctos:</strong></td>
+                        <td class="text-end">{{ stats.correct_exercises }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Sistema de Puntuación</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <strong>+10 puntos:</strong> Respuesta correcta
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-info"></i>
+                        <strong>+5 puntos:</strong> Metodología correcta
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-arrow-repeat text-warning"></i>
+                        <strong>+3 puntos:</strong> Reintento exitoso
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-fire text-danger"></i>
+                        <strong>Bonus:</strong> Rachas de 3, 5, 10, 15+
+                    </li>
+                    <li>
+                        <i class="bi bi-lightbulb text-warning"></i>
+                        <strong>-5 puntos:</strong> Comprar pista
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if recent_submissions %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial Reciente</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Ejercicio</th>
+                                <th>Resultado</th>
+                                <th>Puntos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in recent_submissions %}
+                            <tr>
+                                <td>{{ submission.submitted_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>{{ submission.exercise.topic.topic_name[:50] }}...</td>
+                                <td>
+                                    {% if submission.is_correct_result %}
+                                        <span class="badge bg-success">Correcto</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Incorrecto</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong>+{{ submission.total_score }}</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

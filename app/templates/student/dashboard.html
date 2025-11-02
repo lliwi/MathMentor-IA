@@ -1,0 +1,48 @@
+{% extends "base/base.html" %}
+
+{% block title %}Mi Dashboard - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4"><i class="bi bi-house"></i> Bienvenido, {{ current_user.username }}</h1>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-pencil-square"></i> Practicar</h5>
+                <p class="card-text">Resuelve ejercicios personalizados y mejora tus habilidades matemáticas</p>
+                <a href="{{ url_for('student.practice') }}" class="btn btn-primary">Comenzar Práctica</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-trophy"></i> Mi Marcador</h5>
+                <p class="card-text">Consulta tu progreso, puntos y estadísticas</p>
+                <a href="{{ url_for('student.scoreboard') }}" class="btn btn-success">Ver Marcador</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información Rápida</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Curso:</strong> {% if current_user.student_profile %}{{ current_user.student_profile.course }}{% else %}No asignado{% endif %}</p>
+                <p><strong>Puntos Disponibles:</strong> {% if current_user.student_score %}{{ current_user.student_score.available_points }}{% else %}0{% endif %}</p>
+                <p><strong>Racha Actual:</strong> {% if current_user.student_score %}{{ current_user.student_score.current_streak }}{% else %}0{% endif %}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

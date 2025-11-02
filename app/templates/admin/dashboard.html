@@ -1,0 +1,43 @@
+{% extends "base/base.html" %}
+
+{% block title %}Panel de Administrador - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4"><i class="bi bi-speedometer2"></i> Panel de Administrador</h1>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-book"></i> Gestionar Libros</h5>
+                <p class="card-text">Subir y administrar libros de texto en PDF</p>
+                <a href="{{ url_for('admin.books') }}" class="btn btn-light">Ir a Libros</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-people"></i> Gestionar Estudiantes</h5>
+                <p class="card-text">Asignar temas y gestionar perfiles de estudiantes</p>
+                <a href="{{ url_for('admin.students') }}" class="btn btn-light">Ir a Estudiantes</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-cpu"></i> Configuración IA</h5>
+                <p class="card-text">Configurar motores de IA y modelos</p>
+                <a href="{{ url_for('admin.ai_config') }}" class="btn btn-light">Configurar IA</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

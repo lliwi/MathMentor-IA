@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: mathmentor_db
+    environment:
+      POSTGRES_DB: mathmentor
+      POSTGRES_USER: mathmentor_user
+      POSTGRES_PASSWORD: mathmentor_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathmentor_user -d mathmentor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: mathmentor_web
+    command: flask run --host=0.0.0.0
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://mathmentor_user:mathmentor_password@db:5432/mathmentor
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./app:/app/app
+      - ./uploads:/app/uploads
+      - ./migrations:/app/migrations
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

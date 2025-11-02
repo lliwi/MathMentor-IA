@@ -1,0 +1,100 @@
+{% extends "base/base.html" %}
+
+{% block title %}Editar Libro - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2><i class="bi bi-pencil-square"></i> Editar Libro</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.books') }}">Libros</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Editar</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Información del Libro</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.edit_book', book_id=book.id) }}">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+                        {% if form.title.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.title.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.course.label(class="form-label") }}
+                        {{ form.course(class="form-control" + (" is-invalid" if form.course.errors else "")) }}
+                        {% if form.course.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.course.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.subject.label(class="form-label") }}
+                        {{ form.subject(class="form-control" + (" is-invalid" if form.subject.errors else "")) }}
+                        {% if form.subject.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.subject.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('admin.books') }}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Información Adicional</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Archivo PDF:</strong><br>
+                <small class="text-muted">{{ book.pdf_path }}</small></p>
+
+                <p><strong>Subido:</strong><br>
+                {{ book.uploaded_at.strftime('%d/%m/%Y %H:%M') }}</p>
+
+                <p><strong>Estado:</strong><br>
+                {% if book.processed %}
+                    <span class="badge bg-success">Procesado</span>
+                {% else %}
+                    <span class="badge bg-warning">Pendiente</span>
+                {% endif %}
+                </p>
+
+                {% if book.processed %}
+                <p><strong>Temas extraídos:</strong><br>
+                {{ book.topics.count() }} temas</p>
+                {% endif %}
+
+                <hr>
+                <p class="text-muted mb-0">
+                    <small><i class="bi bi-info-circle"></i> El archivo PDF no puede ser modificado. Si necesitas cambiar el PDF, elimina este libro y sube uno nuevo.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

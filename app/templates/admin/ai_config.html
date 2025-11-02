@@ -1,0 +1,66 @@
+{% extends "base/base.html" %}
+
+{% block title %}Configuración IA - MathMentor IA{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-cpu"></i> Configuración de Motores de IA</h2>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> La configuración de los motores de IA se realiza mediante variables de entorno.
+    Edita el archivo <code>.env</code> para configurar las claves API y modelos.
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-lightning"></i> OpenAI</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Estado:</strong> <span class="badge bg-success">Disponible</span></p>
+                <p class="mb-0"><small>Modelos: GPT-4, GPT-3.5-turbo</small></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-stars"></i> DeepSeek</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Estado:</strong> <span class="badge bg-success">Disponible</span></p>
+                <p class="mb-0"><small>Modelos: deepseek-chat</small></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="bi bi-server"></i> Ollama</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Estado:</strong> <span class="badge bg-success">Disponible</span></p>
+                <p class="mb-0"><small>Modelos locales: llama2, mistral, etc.</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">Variables de Entorno (.env)</h5>
+    </div>
+    <div class="card-body">
+        <pre class="bg-light p-3 rounded"><code># Motor activo (openai, deepseek, ollama)
+ACTIVE_AI_ENGINE=openai
+ACTIVE_AI_MODEL=gpt-4
+
+# Claves API
+OPENAI_API_KEY=tu-clave-aqui
+DEEPSEEK_API_KEY=tu-clave-aqui
+OLLAMA_BASE_URL=http://localhost:11434</code></pre>
+    </div>
+</div>
+{% endblock %}

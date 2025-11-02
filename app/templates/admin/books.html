@@ -1,0 +1,66 @@
+{% extends "base/base.html" %}
+
+{% block title %}Gestionar Libros - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="bi bi-book"></i> Libros</h2>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{{ url_for('admin.upload_book') }}" class="btn btn-primary">
+            <i class="bi bi-upload"></i> Subir Nuevo Libro
+        </a>
+    </div>
+</div>
+
+{% if books %}
+<div class="row">
+    {% for book in books %}
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ book.title }}</h5>
+                <p class="card-text">
+                    <strong>Curso:</strong> {{ book.course }}<br>
+                    <strong>Materia:</strong> {{ book.subject }}<br>
+                    <strong>Subido:</strong> {{ book.uploaded_at.strftime('%d/%m/%Y %H:%M') }}<br>
+                    <strong>Estado:</strong>
+                    {% if book.processed %}
+                        <span class="badge bg-success">Procesado</span>
+                    {% else %}
+                        <span class="badge bg-warning">Pendiente</span>
+                    {% endif %}
+                </p>
+
+                {% if book.processed %}
+                <p class="mb-0">
+                    <small class="text-muted">
+                        <i class="bi bi-list-task"></i> {{ book.topics.count() }} temas extraídos
+                    </small>
+                </p>
+                {% endif %}
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <a href="{{ url_for('admin.edit_book', book_id=book.id) }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil-square"></i> Editar
+                </a>
+                <form method="POST" action="{{ url_for('admin.delete_book', book_id=book.id) }}"
+                      onsubmit="return confirm('¿Estás seguro de que deseas eliminar este libro? Esta acción eliminará también todos los temas, ejercicios y embeddings relacionados.');"
+                      style="display: inline;">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash"></i> Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No hay libros subidos aún.
+    <a href="{{ url_for('admin.upload_book') }}" class="alert-link">Sube el primer libro</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base/base.html" %}
+
+{% block title %}Subir Libro - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2 class="mb-4"><i class="bi bi-upload"></i> Subir Libro (PDF)</h2>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.course.label(class="form-label") }}
+                        {{ form.course(class="form-control") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.subject.label(class="form-label") }}
+                        {{ form.subject(class="form-control") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.pdf_file.label(class="form-label") }}
+                        {{ form.pdf_file(class="form-control") }}
+                        <small class="text-muted">Solo archivos PDF. Tamaño máximo: 50MB</small>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                        <a href="{{ url_for('admin.books') }}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-4">
+            <h5><i class="bi bi-info-circle"></i> Proceso de subida:</h5>
+            <ol>
+                <li>El PDF se subirá al servidor</li>
+                <li>Se extraerá el texto y se dividirá en fragmentos</li>
+                <li>Se generarán embeddings para búsqueda semántica (RAG)</li>
+                <li>La IA extraerá automáticamente los temas del libro</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}
