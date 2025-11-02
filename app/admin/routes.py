@@ -8,7 +8,7 @@ from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from functools import wraps
 from app.admin import admin_bp
-from app.admin.forms import UploadBookForm, EditBookForm
+from app.admin.forms import UploadBookForm, EditBookForm, CreateStudentForm, EditStudentForm
 from app import db
 from app.models.book import Book
 from app.models.topic import Topic
@@ -255,3 +255,141 @@ def assign_topics(student_id):
     return render_template('admin/assign_topics.html',
                          student=student,
                          books=books)
+
+
+@admin_bp.route('/students/create', methods=['GET', 'POST'])
+@admin_required
+def create_student():
+    """Create a new student"""
+    from app.models.student_score import StudentScore
+
+    form = CreateStudentForm()
+
+    if form.validate_on_submit():
+        try:
+            # Check if username already exists
+            if User.query.filter_by(username=form.username.data).first():
+                flash('El nombre de usuario ya existe', 'error')
+                return render_template('admin/create_student.html', form=form)
+
+            # Check if email already exists
+            if User.query.filter_by(email=form.email.data).first():
+                flash('El email ya está registrado', 'error')
+                return render_template('admin/create_student.html', form=form)
+
+            # Create user
+            student = User(
+                username=form.username.data,
+                email=form.email.data,
+                role='student'
+            )
+            student.set_password(form.password.data)
+            db.session.add(student)
+            db.session.flush()  # Get student ID
+
+            # Create student profile
+            profile = StudentProfile(
+                user_id=student.id,
+                course=form.course.data or ''
+            )
+            db.session.add(profile)
+
+            # Create student score record
+            score = StudentScore(
+                student_id=student.id
+            )
+            db.session.add(score)
+
+            db.session.commit()
+            flash(f'Estudiante "{student.username}" creado exitosamente', 'success')
+            return redirect(url_for('admin.students'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear estudiante: {str(e)}', 'error')
+
+    return render_template('admin/create_student.html', form=form)
+
+
+@admin_bp.route('/students/<int:student_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_student(student_id):
+    """Edit student information"""
+    student = User.query.get_or_404(student_id)
+
+    if student.role != 'student':
+        flash('Este usuario no es un estudiante', 'error')
+        return redirect(url_for('admin.students'))
+
+    form = EditStudentForm(obj=student)
+
+    # Pre-populate course from profile
+    if request.method == 'GET' and student.student_profile:
+        form.course.data = student.student_profile.course
+
+    if form.validate_on_submit():
+        try:
+            # Check if username is taken by another user
+            existing_user = User.query.filter_by(username=form.username.data).first()
+            if existing_user and existing_user.id != student.id:
+                flash('El nombre de usuario ya existe', 'error')
+                return render_template('admin/edit_student.html', form=form, student=student)
+
+            # Check if email is taken by another user
+            existing_email = User.query.filter_by(email=form.email.data).first()
+            if existing_email and existing_email.id != student.id:
+                flash('El email ya está registrado', 'error')
+                return render_template('admin/edit_student.html', form=form, student=student)
+
+            # Update user
+            student.username = form.username.data
+            student.email = form.email.data
+
+            # Update password if provided
+            if form.password.data:
+                student.set_password(form.password.data)
+
+            # Update or create profile
+            if not student.student_profile:
+                profile = StudentProfile(user_id=student.id)
+                db.session.add(profile)
+            else:
+                profile = student.student_profile
+
+            profile.course = form.course.data or ''
+
+            db.session.commit()
+            flash(f'Estudiante "{student.username}" actualizado correctamente', 'success')
+            return redirect(url_for('admin.students'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar estudiante: {str(e)}', 'error')
+
+    return render_template('admin/edit_student.html', form=form, student=student)
+
+
+@admin_bp.route('/students/<int:student_id>/delete', methods=['POST'])
+@admin_required
+def delete_student(student_id):
+    """Delete a student"""
+    try:
+        student = User.query.get_or_404(student_id)
+
+        if student.role != 'student':
+            flash('Este usuario no es un estudiante', 'error')
+            return redirect(url_for('admin.students'))
+
+        username = student.username
+
+        # Delete student (cascade will handle profile, scores, submissions)
+        db.session.delete(student)
+        db.session.commit()
+
+        flash(f'Estudiante "{username}" eliminado correctamente', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar estudiante: {str(e)}', 'error')
+
+    return redirect(url_for('admin.students'))
