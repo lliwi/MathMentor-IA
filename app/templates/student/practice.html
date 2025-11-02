@@ -124,6 +124,7 @@ marked.setOptions({
 
 let currentExerciseId = null;
 let currentProcedures = [];
+let hasRetried = false;
 
 document.getElementById('generate-btn').addEventListener('click', generateExercise);
 document.getElementById('submit-btn').addEventListener('click', submitExercise);
@@ -148,6 +149,7 @@ function generateExercise() {
         if (data.success) {
             currentExerciseId = data.exercise.id;
             currentProcedures = data.exercise.available_procedures || [];
+            hasRetried = false;  // Reset retry flag for new exercise
 
             // Render markdown content to HTML
             const exerciseHTML = marked.parse(data.exercise.content);
@@ -249,7 +251,8 @@ function submitExercise() {
             exercise_id: currentExerciseId,
             answer: answer,
             methodology: '',
-            selected_procedures: selectedProcedures
+            selected_procedures: selectedProcedures,
+            is_retry: hasRetried
         })
     })
     .then(response => response.json())
@@ -279,8 +282,38 @@ function displayFeedback(evaluation) {
     let icon = isCorrect ? 'check-circle-fill' : 'x-circle-fill';
     let title = isCorrect ? '¡Excelente! Respuesta correcta' : 'Respuesta incorrecta';
 
-    // Render markdown feedback to HTML
-    const feedbackHTML = marked.parse(evaluation.feedback);
+    let feedbackContent = '';
+    let actionButtons = '';
+
+    if (!isCorrect) {
+        if (!hasRetried) {
+            // First attempt failed - show simple message and retry button only
+            feedbackContent = '<p class="mb-3">Tu respuesta no es correcta. Intenta resolverlo de nuevo.</p>';
+            actionButtons = '<button class="btn btn-primary mt-3" onclick="retryExercise()"><i class="bi bi-arrow-repeat"></i> Reintentar (+3 puntos por esfuerzo)</button>';
+        } else {
+            // Second attempt failed - show detailed feedback and solution
+            const feedbackHTML = marked.parse(evaluation.feedback);
+            feedbackContent = `
+                <div class="feedback-text markdown-content">
+                    ${feedbackHTML}
+                </div>
+                <div class="alert alert-info mt-3">
+                    <h6><i class="bi bi-info-circle"></i> Solución:</h6>
+                    <div class="markdown-content">${evaluation.solution ? marked.parse(evaluation.solution) : 'No disponible'}</div>
+                </div>
+            `;
+            actionButtons = '<button class="btn btn-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle"></i> Nuevo Ejercicio</button>';
+        }
+    } else {
+        // Correct answer - show detailed feedback and new exercise button
+        const feedbackHTML = marked.parse(evaluation.feedback);
+        feedbackContent = `
+            <div class="feedback-text markdown-content">
+                ${feedbackHTML}
+            </div>
+        `;
+        actionButtons = '<button class="btn btn-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle"></i> Nuevo Ejercicio</button>';
+    }
 
     feedbackDiv.innerHTML = `
         <div class="feedback-box ${feedbackClass}">
@@ -288,11 +321,8 @@ function displayFeedback(evaluation) {
             <p><strong>Puntos obtenidos:</strong> ${evaluation.score}</p>
             ${evaluation.streak_bonus > 0 ? `<p><strong>¡Bonus por racha!</strong> +${evaluation.streak_bonus} puntos</p>` : ''}
             <hr>
-            <div class="feedback-text markdown-content">
-                ${feedbackHTML}
-            </div>
-            ${!isCorrect ? '<button class="btn btn-primary mt-3" onclick="retryExercise()"><i class="bi bi-arrow-repeat"></i> Reintentar (+3 puntos por esfuerzo)</button>' : ''}
-            <button class="btn btn-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle"></i> Nuevo Ejercicio</button>
+            ${feedbackContent}
+            ${actionButtons}
         </div>
     `;
 
@@ -334,6 +364,7 @@ function buyHint() {
 }
 
 function retryExercise() {
+    hasRetried = true;  // Mark that student is retrying
     document.getElementById('feedback-display').classList.add('d-none');
     document.getElementById('student-answer').value = '';
 
@@ -345,6 +376,7 @@ function retryExercise() {
 }
 
 function newExercise() {
+    hasRetried = false;  // Reset retry flag
     document.getElementById('exercise-display').classList.add('d-none');
     document.getElementById('feedback-display').classList.add('d-none');
     document.getElementById('no-exercise').classList.remove('d-none');

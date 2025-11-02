@@ -207,19 +207,27 @@ def submit_exercise():
                 errors=evaluation.get('errors_found', [])
             )
 
+        # Only include solution on retry (second attempt)
+        response_data = {
+            'is_correct': evaluation.get('is_correct_result', False),
+            'is_methodology_correct': is_correct_methodology,
+            'feedback': detailed_feedback,
+            'score': score_data['total_score'],
+            'score_breakdown': score_data,
+            'total_points': score_update['total_points'],
+            'available_points': score_update['available_points'],
+            'current_streak': score_update['current_streak'],
+            'streak_bonus': score_update['streak_bonus'],
+            'is_retry': is_retry  # Send back retry status
+        }
+
+        # Include solution only if this was a retry attempt
+        if is_retry:
+            response_data['solution'] = exercise.solution
+
         return jsonify({
             'success': True,
-            'evaluation': {
-                'is_correct': evaluation.get('is_correct_result', False),
-                'is_methodology_correct': is_correct_methodology,
-                'feedback': detailed_feedback,
-                'score': score_data['total_score'],
-                'score_breakdown': score_data,
-                'total_points': score_update['total_points'],
-                'available_points': score_update['available_points'],
-                'current_streak': score_update['current_streak'],
-                'streak_bonus': score_update['streak_bonus']
-            }
+            'evaluation': response_data
         })
 
     except Exception as e:

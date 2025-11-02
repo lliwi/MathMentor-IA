@@ -76,7 +76,7 @@ IMPORTANTE sobre los procedimientos:
 - Los procedimientos deben ser específicos (ej: "Propiedad distributiva", "Teorema de Pitágoras", "Factorización por diferencia de cuadrados")
 - IMPORTANTE: Cada procedimiento DEBE incluir una "description" breve (1-2 líneas) que explique qué es y cuándo se usa
 - Incluye emoticonos para hacer el ejercicio más atractivo
-- No propongas acciones al final de las respuetas o pistas."""
+- No propongas acciones al final de las respuestas o pistas, el estudiante no puede interactuar con tus respuestas."""
 
         messages = [
             {"role": "system", "content": "Eres un profesor de matemáticas experto."},
