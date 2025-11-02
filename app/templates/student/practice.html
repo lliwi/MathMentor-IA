@@ -42,7 +42,7 @@
                         <h5 class="mb-0"><i class="bi bi-question-circle"></i> Ejercicio</h5>
                     </div>
                     <div class="card-body">
-                        <div id="exercise-content" class="fs-5"></div>
+                        <div id="exercise-content" class="fs-5 markdown-content"></div>
                     </div>
                 </div>
 
@@ -149,7 +149,9 @@ function generateExercise() {
             currentExerciseId = data.exercise.id;
             currentProcedures = data.exercise.available_procedures || [];
 
-            document.getElementById('exercise-content').textContent = data.exercise.content;
+            // Render markdown content to HTML
+            const exerciseHTML = marked.parse(data.exercise.content);
+            document.getElementById('exercise-content').innerHTML = exerciseHTML;
             document.getElementById('exercise-topic').textContent = data.exercise.topic;
             document.getElementById('exercise-difficulty').textContent = data.exercise.difficulty;
 
@@ -163,6 +165,11 @@ function generateExercise() {
 
             // Clear previous answers
             document.getElementById('student-answer').value = '';
+
+            // Render LaTeX math with MathJax
+            if (typeof MathJax !== 'undefined') {
+                MathJax.typesetPromise([document.getElementById('exercise-content')]).catch((err) => console.log('MathJax error:', err));
+            }
         } else {
             alert('Error: ' + data.message);
         }
