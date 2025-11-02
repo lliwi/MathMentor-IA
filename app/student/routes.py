@@ -40,7 +40,8 @@ def dashboard():
 @student_required
 def practice():
     """Practice area - generate and solve exercises"""
-    return render_template('student/practice.html')
+    stats = ScoringService.get_student_statistics(current_user.id)
+    return render_template('student/practice.html', stats=stats)
 
 
 @student_bp.route('/generate-exercise', methods=['POST'])
