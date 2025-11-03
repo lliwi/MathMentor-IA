@@ -153,23 +153,23 @@ ERRORES: {', '.join(errors)}"""
         print(f"[DEBUG DeepSeek] Metadata: {book_metadata}", flush=True)
         sys.stdout.flush()
 
-        # Combine first few chunks to get table of contents or main structure
-        sample_text = '\n\n'.join(text_chunks[:5])
+        # Combine first 10 chunks to get table of contents or main structure
+        sample_text = '\n\n'.join(text_chunks[:10])
         print(f"[DEBUG DeepSeek] Longitud del texto de muestra: {len(sample_text)} caracteres", flush=True)
         print(f"[DEBUG DeepSeek] Primeros 500 caracteres del texto:", flush=True)
         print(sample_text[:500], flush=True)
         sys.stdout.flush()
 
-        prompt = f"""Analiza este texto de un libro de matemáticas y extrae los TEMAS principales.
+        prompt = f"""Extrae los temas y subtemas de este libro de matemáticas en formato JSON.
 
 LIBRO: {book_metadata.get('title', 'Sin título')}
 CURSO: {book_metadata.get('course', 'No especificado')}
 MATERIA: {book_metadata.get('subject', 'Matemáticas')}
 
 TEXTO:
-{sample_text[:3000]}
+{sample_text}
 
-Extrae los temas principales en formato JSON:
+Formato de respuesta esperado:
 {{
     "topics": [
         {{"name": "Nombre del tema", "description": "Breve descripción"}},

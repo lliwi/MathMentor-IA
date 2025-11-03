@@ -109,7 +109,8 @@ def process_book_pdf(book_id: int):
         return
 
     # Initialize services
-    pdf_processor = PDFProcessor()
+    # Use larger chunk size (3000) for better topic extraction - allows ~30k chars total
+    pdf_processor = PDFProcessor(chunk_size=3000, chunk_overlap=200)
     rag_service = RAGService()
     ai_engine = AIEngineFactory.create()
 

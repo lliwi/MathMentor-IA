@@ -110,8 +110,26 @@ Explica los errores de forma educativa."""
 
     def extract_topics(self, text_chunks: list, book_metadata: Dict[str, str]) -> list:
         """Extract topics using Ollama"""
-        sample_text = '\n\n'.join(text_chunks[:3])
-        prompt = f"Extrae los temas principales de este libro de matemáticas en formato JSON:\n{sample_text[:1500]}"
+        sample_text = '\n\n'.join(text_chunks[:10])
+
+        prompt = f"""Extrae los temas y subtemas de este libro de matemáticas en formato JSON.
+
+LIBRO: {book_metadata.get('title', 'Sin título')}
+CURSO: {book_metadata.get('course', 'No especificado')}
+MATERIA: {book_metadata.get('subject', 'Matemáticas')}
+
+TEXTO:
+{sample_text}
+
+Formato de respuesta esperado:
+{{
+    "topics": [
+        {{"name": "Nombre del tema", "description": "Breve descripción"}},
+        ...
+    ]
+}}
+
+Busca especialmente en el índice o tabla de contenidos si está presente."""
 
         response = self._call_generate(prompt, temperature=0.3)
 
