@@ -153,11 +153,89 @@ Después de ejecutar `init_db.py`, tendrás estos usuarios:
 
 ### Flujo de Trabajo RAG
 
+El sistema RAG (Retrieval-Augmented Generation) se emplea en **3 puntos clave** de la aplicación:
+
+#### 1. Procesamiento y Almacenamiento de PDFs
+**Ubicación:** `app/admin/routes.py:113-125`
+
+Cuando el administrador sube un libro PDF:
+
+```python
+pdf_processor = PDFProcessor(chunk_size=3000, chunk_overlap=200)
+rag_service = RAGService()
+
+# Extraer y dividir el texto en chunks
+chunks = pdf_processor.process_pdf(book.pdf_path)
+
+# Generar embeddings y almacenarlos en PostgreSQL con pgvector
+rag_service.store_chunks(book.id, chunks)
 ```
-PDF → Extracción → Chunking → Embeddings → PostgreSQL+pgvector
-                                              ↓
-Tema del Estudiante → Búsqueda Semántica → Contexto → Generación de Ejercicio (IA)
+
+**Proceso:**
+- Extrae el texto del PDF página por página usando `pdfplumber`
+- Divide el contenido en chunks (fragmentos de ~3000 caracteres con 200 de superposición)
+- Genera embeddings vectoriales usando `sentence-transformers/all-MiniLM-L6-v2` (384 dimensiones)
+- Almacena los chunks y sus embeddings en la tabla `document_embeddings` (PostgreSQL + pgvector)
+
+#### 2. Generación de Ejercicios
+**Ubicación:** `app/student/routes.py:78-90`
+
+Cuando un estudiante solicita un nuevo ejercicio:
+
+```python
+# Recuperar contexto relevante del libro usando RAG
+rag_service = RAGService()
+context = rag_service.get_context_for_topic(topic_id, top_k=3)
+
+# Generar ejercicio usando el contexto recuperado
+ai_engine = AIEngineFactory.create()
+exercise_data = ai_engine.generate_exercise(
+    topic=topic.topic_name,
+    context=context,  # ← Contexto recuperado vía RAG
+    difficulty=difficulty,
+    course=profile.course
+)
 ```
+
+**Proceso:**
+- Busca los 3 chunks más relevantes del libro usando similitud coseno (operador `<=>` de pgvector)
+- El contexto recuperado se envía al modelo de IA (OpenAI/DeepSeek/Ollama)
+- La IA genera un ejercicio basado en el contenido específico del libro de texto
+
+#### 3. Generación de Pistas
+**Ubicación:** `app/student/routes.py:284-288`
+
+Cuando un estudiante compra una pista (costo: 5 puntos):
+
+```python
+# Recuperar contexto relevante
+rag_service = RAGService()
+context = rag_service.get_context_for_topic(exercise.topic_id, top_k=2)
+
+# Generar pista usando el contexto
+hint = ai_engine.generate_hint(exercise.content, context)
+```
+
+**Proceso:**
+- Recupera los 2 chunks más relevantes del tema
+- La IA genera una pista contextualizada basada en el contenido del libro
+- Proporciona orientación sin revelar la solución completa
+
+#### Arquitectura RAG
+
+```
+PDF → PDFProcessor → Chunks → RAGService → Embeddings → PostgreSQL (pgvector)
+                                                              ↓
+                                                     [búsqueda vectorial]
+                                                              ↓
+Ejercicio/Pista ← AI Engine ← Contexto recuperado ← retrieve_context()
+```
+
+**Configuración:**
+- **Modelo de embeddings:** `sentence-transformers/all-MiniLM-L6-v2` (configurable vía `EMBEDDING_MODEL` en `.env`)
+- **Base de datos vectorial:** PostgreSQL 16 + extensión pgvector
+- **Método de similitud:** Distancia coseno (`<=>` operator)
+- **Tamaño de chunks:** 3000 caracteres con 200 de superposición
 
 ## Desarrollo
 
