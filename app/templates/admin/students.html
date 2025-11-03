@@ -51,6 +51,11 @@
                 </td>
                 <td>
                     <div class="btn-group" role="group">
+                        <a href="{{ url_for('admin.student_statistics', student_id=student.id) }}"
+                           class="btn btn-sm btn-info"
+                           title="Ver estadísticas">
+                            <i class="bi bi-graph-up"></i> Estadísticas
+                        </a>
                         <a href="{{ url_for('admin.assign_topics', student_id=student.id) }}"
                            class="btn btn-sm btn-primary"
                            title="Asignar temas">

@@ -394,3 +394,47 @@ def delete_student(student_id):
         flash(f'Error al eliminar estudiante: {str(e)}', 'error')
 
     return redirect(url_for('admin.students'))
+
+
+@admin_bp.route('/students/<int:student_id>/statistics')
+@admin_required
+def student_statistics(student_id):
+    """View detailed statistics for a student"""
+    from app.services.scoring_service import ScoringService
+    from app.models.student_score import StudentScore
+    from app.models.exercise import Exercise
+    from app.models.submission import Submission
+
+    student = User.query.get_or_404(student_id)
+
+    if student.role != 'student':
+        flash('Este usuario no es un estudiante', 'error')
+        return redirect(url_for('admin.students'))
+
+    # Get general statistics
+    stats = ScoringService.get_student_statistics(student_id)
+
+    # Get student profile info
+    profile = StudentProfile.query.filter_by(user_id=student_id).first()
+
+    # Get submission history (last 10)
+    recent_submissions = Submission.query.filter_by(student_id=student_id)\
+        .order_by(Submission.submitted_at.desc())\
+        .limit(10)\
+        .all()
+
+    # Calculate additional stats
+    total_submissions = Submission.query.filter_by(student_id=student_id).count()
+    correct_submissions = Submission.query.filter_by(student_id=student_id, is_correct_result=True).count()
+
+    # Get assigned topics
+    assigned_topics = profile.get_topics() if profile else []
+
+    return render_template('admin/student_statistics.html',
+                         student=student,
+                         stats=stats,
+                         profile=profile,
+                         recent_submissions=recent_submissions,
+                         total_submissions=total_submissions,
+                         correct_submissions=correct_submissions,
+                         assigned_topics=assigned_topics)

@@ -1,0 +1,228 @@
+{% extends "base/base.html" %}
+
+{% block title %}Estadísticas de {{ student.username }} - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-graph-up"></i> Estadísticas de {{ student.username }}</h2>
+    <a href="{{ url_for('admin.students') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Volver a Estudiantes
+    </a>
+</div>
+
+<!-- Student Info Card -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-person-badge"></i> Información del Estudiante</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <p><strong>Usuario:</strong> {{ student.username }}</p>
+                <p><strong>Email:</strong> {{ student.email }}</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Curso:</strong> {{ profile.course if profile else 'No asignado' }}</p>
+                <p><strong>Temas asignados:</strong> {{ assigned_topics|length }}</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Fecha de registro:</strong> {{ student.created_at.strftime('%d/%m/%Y') if student.created_at else 'N/A' }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <!-- Points Card -->
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-header"><i class="bi bi-trophy"></i> Puntos</div>
+            <div class="card-body">
+                <h3 class="card-title">{{ stats.available_points }}</h3>
+                <p class="card-text mb-1"><small>Disponibles</small></p>
+                <hr class="bg-white">
+                <p class="mb-0"><small>Total ganados: {{ stats.total_points }}</small></p>
+                <p class="mb-0"><small>Gastados: {{ stats.points_spent }}</small></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exercises Card -->
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-header"><i class="bi bi-file-earmark-text"></i> Ejercicios</div>
+            <div class="card-body">
+                <h3 class="card-title">{{ total_submissions }}</h3>
+                <p class="card-text mb-1"><small>Total realizados</small></p>
+                <hr class="bg-white">
+                <p class="mb-0"><small>Correctos: {{ correct_submissions }}</small></p>
+                <p class="mb-0"><small>Incorrectos: {{ total_submissions - correct_submissions }}</small></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accuracy Card -->
+    <div class="col-md-3">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-header"><i class="bi bi-percent"></i> Precisión</div>
+            <div class="card-body">
+                <h3 class="card-title">{{ "%.1f"|format(stats.accuracy_rate) }}%</h3>
+                <p class="card-text mb-1"><small>Tasa de acierto</small></p>
+                <hr class="bg-white">
+                <p class="mb-0"><small>Correctos: {{ stats.correct_exercises }}</small></p>
+                <p class="mb-0"><small>De {{ stats.total_exercises }} intentos</small></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Streak Card -->
+    <div class="col-md-3">
+        <div class="card text-white bg-danger mb-3">
+            <div class="card-header"><i class="bi bi-fire"></i> Racha</div>
+            <div class="card-body">
+                <h3 class="card-title">{{ stats.current_streak }}</h3>
+                <p class="card-text mb-1"><small>Racha actual</small></p>
+                <hr class="bg-white">
+                <p class="mb-0"><small>Mejor racha: {{ stats.best_streak }}</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assigned Topics -->
+{% if assigned_topics %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-book"></i> Temas Asignados ({{ assigned_topics|length }})</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for topic in assigned_topics %}
+            <div class="col-md-4 mb-2">
+                <span class="badge bg-secondary p-2">{{ topic.topic_name }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Submissions -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Últimos 10 Envíos</h5>
+    </div>
+    <div class="card-body">
+        {% if recent_submissions %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Ejercicio</th>
+                        <th>Resultado</th>
+                        <th>Metodología</th>
+                        <th>Puntos</th>
+                        <th>Reintentos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for submission in recent_submissions %}
+                    <tr>
+                        <td>{{ submission.submitted_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            <small>Ejercicio #{{ submission.exercise_id }}</small>
+                        </td>
+                        <td>
+                            {% if submission.is_correct_result %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Correcto</span>
+                            {% else %}
+                                <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Incorrecto</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if submission.is_correct_methodology %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Correcta</span>
+                            {% elif submission.is_correct_methodology == False %}
+                                <span class="badge bg-warning"><i class="bi bi-x-circle"></i> Incorrecta</span>
+                            {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ submission.total_score }}</strong> pts
+                            <br>
+                            <small class="text-muted">
+                                {% if submission.score_result > 0 %}R:{{ submission.score_result }} {% endif %}
+                                {% if submission.score_development > 0 %}M:{{ submission.score_development }} {% endif %}
+                                {% if submission.score_effort > 0 %}E:{{ submission.score_effort }}{% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            {% if submission.is_retry %}
+                                <span class="badge bg-info"><i class="bi bi-arrow-repeat"></i> Reintento</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Primer intento</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Este estudiante aún no ha realizado ningún ejercicio.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Performance Chart (Placeholder for future enhancement) -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Resumen de Desempeño</h5>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <h4>{{ total_submissions }}</h4>
+                    <p class="text-muted">Ejercicios Totales</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <h4>{{ correct_submissions }}</h4>
+                    <p class="text-muted">Ejercicios Correctos</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <h4>{{ stats.best_streak }}</h4>
+                    <p class="text-muted">Mejor Racha</p>
+                </div>
+            </div>
+        </div>
+
+        {% if total_submissions > 0 %}
+        <div class="progress" style="height: 30px;">
+            {% set correct_percentage = (correct_submissions / total_submissions * 100)|round|int %}
+            {% set incorrect_percentage = 100 - correct_percentage %}
+            <div class="progress-bar bg-success" role="progressbar"
+                 style="width: {{ correct_percentage }}%"
+                 aria-valuenow="{{ correct_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                {{ correct_percentage }}% Correctos
+            </div>
+            <div class="progress-bar bg-danger" role="progressbar"
+                 style="width: {{ incorrect_percentage }}%"
+                 aria-valuenow="{{ incorrect_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                {{ incorrect_percentage }}% Incorrectos
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
