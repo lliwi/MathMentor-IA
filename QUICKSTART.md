@@ -36,9 +36,13 @@ OLLAMA_BASE_URL=http://localhost:11434
 # Iniciar servicios
 docker-compose up -d
 
-# Esperar unos segundos y luego inicializar BD
-docker-compose exec web python init_db.py
+# La base de datos se inicializa automáticamente en el primer arranque
+# Si ves usuarios de prueba creados en los logs, ¡ya está listo!
 ```
+
+**Nota**: La aplicación detecta automáticamente si es una instalación nueva y crea:
+- Usuario administrador: `admin` / `admin123`
+- Usuarios estudiantes de prueba: `maria`, `juan`, `lucia` / `estudiante123`
 
 ### 4. Acceder
 

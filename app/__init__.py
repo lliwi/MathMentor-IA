@@ -37,6 +37,10 @@ def create_app(config_name=None):
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Por favor inicia sesión para acceder a esta página.'
 
+    # Auto-initialize database on first run
+    with app.app_context():
+        _auto_initialize_database()
+
     # Register blueprints
     from app.auth import auth_bp
     from app.admin import admin_bp
@@ -60,6 +64,129 @@ def create_app(config_name=None):
         return redirect(url_for('auth.login'))
 
     return app
+
+
+def _auto_initialize_database():
+    """Auto-initialize database if it's a fresh installation"""
+    try:
+        from app.models.user import User
+        from app.models.student_profile import StudentProfile
+        from app.models.student_score import StudentScore
+        from app.services.rag_service import RAGService
+        from sqlalchemy import inspect
+
+        # Check if users table exists
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+
+        if 'users' not in tables:
+            # Fresh installation - initialize everything
+            print("\n" + "="*60)
+            print("🚀 NEW INSTALLATION DETECTED - Auto-initializing database...")
+            print("="*60)
+
+            # Initialize pgvector extension FIRST (before creating tables)
+            print("📦 Initializing pgvector extension...")
+            rag_service = RAGService()
+            rag_service.initialize_pgvector()
+
+            # Create all tables
+            print("🗄️  Creating database tables...")
+            db.create_all()
+
+            # Create admin user
+            print("👤 Creating admin user...")
+            admin = User(
+                username='admin',
+                email='admin@mathmentor.com',
+                role='admin'
+            )
+            admin.set_password('admin123')
+            db.session.add(admin)
+
+            # Create test student users
+            students = [
+                ('maria', 'maria@estudiante.com', '1º ESO'),
+                ('juan', 'juan@estudiante.com', '2º ESO'),
+                ('lucia', 'lucia@estudiante.com', '3º ESO'),
+            ]
+
+            for username, email, course in students:
+                print(f"👨‍🎓 Creating student: {username}...")
+                student = User(
+                    username=username,
+                    email=email,
+                    role='student'
+                )
+                student.set_password('estudiante123')
+                db.session.add(student)
+                db.session.flush()  # Get student ID
+
+                # Create student profile
+                profile = StudentProfile(
+                    user_id=student.id,
+                    course=course
+                )
+                db.session.add(profile)
+
+                # Create student score record
+                score = StudentScore(
+                    student_id=student.id
+                )
+                db.session.add(score)
+
+            db.session.commit()
+
+            print("\n" + "="*60)
+            print("✅ Database initialized successfully!")
+            print("="*60)
+            print("\n📋 Test users created:")
+            print("   Admin: username='admin', password='admin123'")
+            print("   Students: username='maria/juan/lucia', password='estudiante123'")
+            print("\n⚠️  IMPORTANT: Change these passwords in production!")
+            print("="*60 + "\n")
+        else:
+            # Tables exist, check if users exist
+            user_count = User.query.count()
+            if user_count == 0:
+                # Tables exist but no users - create test users only
+                print("📋 Creating test users...")
+
+                admin = User(
+                    username='admin',
+                    email='admin@mathmentor.com',
+                    role='admin'
+                )
+                admin.set_password('admin123')
+                db.session.add(admin)
+
+                students = [
+                    ('maria', 'maria@estudiante.com', '1º ESO'),
+                    ('juan', 'juan@estudiante.com', '2º ESO'),
+                    ('lucia', 'lucia@estudiante.com', '3º ESO'),
+                ]
+
+                for username, email, course in students:
+                    student = User(
+                        username=username,
+                        email=email,
+                        role='student'
+                    )
+                    student.set_password('estudiante123')
+                    db.session.add(student)
+                    db.session.flush()
+
+                    profile = StudentProfile(user_id=student.id, course=course)
+                    db.session.add(profile)
+
+                    score = StudentScore(student_id=student.id)
+                    db.session.add(score)
+
+                db.session.commit()
+                print("✅ Test users created!")
+
+    except Exception as e:
+        print(f"⚠️  Auto-initialization skipped: {str(e)}")
 
 
 @login_manager.user_loader
