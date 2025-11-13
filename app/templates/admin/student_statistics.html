@@ -5,9 +5,17 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="bi bi-graph-up"></i> Estadísticas de {{ student.username }}</h2>
-    <a href="{{ url_for('admin.students') }}" class="btn btn-secondary">
-        <i class="bi bi-arrow-left"></i> Volver a Estudiantes
-    </a>
+    <div>
+        <a href="{{ url_for('admin.exercise_history', student_id=student.id) }}" class="btn btn-primary me-2">
+            <i class="bi bi-journal-text"></i> Ver Historial Completo
+        </a>
+        <a href="{{ url_for('admin.topic_analytics', student_id=student.id) }}" class="btn btn-info me-2">
+            <i class="bi bi-bar-chart"></i> Análisis por Tema
+        </a>
+        <a href="{{ url_for('admin.students') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Estudiantes
+        </a>
+    </div>
 </div>
 
 <!-- Student Info Card -->
@@ -110,8 +118,11 @@
 
 <!-- Recent Submissions -->
 <div class="card mb-4">
-    <div class="card-header bg-primary text-white">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-clock-history"></i> Últimos 10 Envíos</h5>
+        <a href="{{ url_for('admin.exercise_history', student_id=student.id) }}" class="btn btn-sm btn-light">
+            <i class="bi bi-arrow-right-circle"></i> Ver Todos
+        </a>
     </div>
     <div class="card-body">
         {% if recent_submissions %}

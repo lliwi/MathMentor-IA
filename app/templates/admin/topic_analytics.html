@@ -1,0 +1,384 @@
+{% extends "base/base.html" %}
+
+{% block title %}Análisis por Tema - {{ student.username }} - MathMentor IA{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-bar-chart"></i> Análisis por Tema - {{ student.username }}</h2>
+    <div>
+        <a href="{{ url_for('admin.exercise_history', student_id=student.id) }}" class="btn btn-info me-2">
+            <i class="bi bi-journal-text"></i> Ver Historial
+        </a>
+        <a href="{{ url_for('admin.student_statistics', student_id=student.id) }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Estadísticas
+        </a>
+    </div>
+</div>
+
+<!-- Recommendations Cards -->
+<div class="row mb-4">
+    <!-- Needs Urgent Attention -->
+    {% if recommendations.needs_attention %}
+    <div class="col-md-4">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Requiere Atención Urgente</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    {% for item in recommendations.needs_attention %}
+                    <li class="mb-2">
+                        <strong>{{ item.topic }}</strong>
+                        <br><small class="text-muted">{{ item.message }}</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Needs Practice -->
+    {% if recommendations.needs_practice %}
+    <div class="col-md-4">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-flag-fill"></i> Necesita Práctica</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    {% for item in recommendations.needs_practice %}
+                    <li class="mb-2">
+                        <strong>{{ item.topic }}</strong>
+                        <br><small class="text-muted">{{ item.message }}</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Doing Well -->
+    {% if recommendations.doing_well %}
+    <div class="col-md-4">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-trophy-fill"></i> Excelente Desempeño</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    {% for item in recommendations.doing_well %}
+                    <li class="mb-2">
+                        <strong>{{ item.topic }}</strong>
+                        <br><small class="text-muted">{{ item.message }}</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not recommendations.needs_attention and not recommendations.needs_practice and not recommendations.doing_well %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No hay suficientes datos para generar recomendaciones (se requieren al menos 3 intentos por tema).
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Topic Performance Chart -->
+{% if topic_performance %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Rendimiento por Tema</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="topicPerformanceChart" height="80"></canvas>
+    </div>
+</div>
+
+<!-- Detailed Topic Statistics Table -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="bi bi-table"></i> Estadísticas Detalladas por Tema</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tema</th>
+                        <th class="text-center">Intentos Totales</th>
+                        <th class="text-center">Ejercicios Únicos</th>
+                        <th class="text-center">Acierto Resultado</th>
+                        <th class="text-center">Acierto Metodología</th>
+                        <th class="text-center">Puntuación Media</th>
+                        <th class="text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for topic in topic_performance %}
+                    <tr>
+                        <td><strong>{{ topic.topic_name }}</strong></td>
+                        <td class="text-center">{{ topic.total_attempts }}</td>
+                        <td class="text-center">{{ topic.unique_exercises }}</td>
+                        <td class="text-center">
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar
+                                    {% if topic.accuracy >= 80 %}bg-success
+                                    {% elif topic.accuracy >= 70 %}bg-info
+                                    {% elif topic.accuracy >= 50 %}bg-warning
+                                    {% else %}bg-danger{% endif %}"
+                                    role="progressbar"
+                                    style="width: {{ topic.accuracy }}%"
+                                    aria-valuenow="{{ topic.accuracy }}"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100">
+                                    {{ topic.accuracy }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar bg-secondary"
+                                    role="progressbar"
+                                    style="width: {{ topic.methodology_rate }}%"
+                                    aria-valuenow="{{ topic.methodology_rate }}"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100">
+                                    {{ topic.methodology_rate }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-primary">{{ topic.avg_score }} pts</span>
+                        </td>
+                        <td class="text-center">
+                            {% if topic.accuracy >= 80 %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Excelente</span>
+                            {% elif topic.accuracy >= 70 %}
+                            <span class="badge bg-info"><i class="bi bi-dash-circle"></i> Bueno</span>
+                            {% elif topic.accuracy >= 50 %}
+                            <span class="badge bg-warning"><i class="bi bi-exclamation-circle"></i> Regular</span>
+                            {% else %}
+                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Necesita Ayuda</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> Este estudiante aún no ha completado ejercicios.
+</div>
+{% endif %}
+
+<!-- Progress Over Time Chart -->
+{% if time_series %}
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="bi bi-calendar-week"></i> Progreso en los Últimos 30 Días</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="progressChart" height="60"></canvas>
+    </div>
+    <div class="card-footer text-muted">
+        <small><i class="bi bi-info-circle"></i> Gráfico que muestra la evolución del rendimiento diario.</small>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Topic Performance Bar Chart
+{% if topic_performance %}
+const topicData = {
+    labels: [
+        {% for topic in topic_performance %}
+        '{{ topic.topic_name[:30] }}',
+        {% endfor %}
+    ],
+    datasets: [{
+        label: 'Precisión (%)',
+        data: [
+            {% for topic in topic_performance %}
+            {{ topic.accuracy }},
+            {% endfor %}
+        ],
+        backgroundColor: [
+            {% for topic in topic_performance %}
+            {% if topic.accuracy >= 80 %}'rgba(25, 135, 84, 0.8)'
+            {% elif topic.accuracy >= 70 %}'rgba(13, 202, 240, 0.8)'
+            {% elif topic.accuracy >= 50 %}'rgba(255, 193, 7, 0.8)'
+            {% else %}'rgba(220, 53, 69, 0.8)'{% endif %},
+            {% endfor %}
+        ],
+        borderColor: [
+            {% for topic in topic_performance %}
+            {% if topic.accuracy >= 80 %}'rgba(25, 135, 84, 1)'
+            {% elif topic.accuracy >= 70 %}'rgba(13, 202, 240, 1)'
+            {% elif topic.accuracy >= 50 %}'rgba(255, 193, 7, 1)'
+            {% else %}'rgba(220, 53, 69, 1)'{% endif %},
+            {% endfor %}
+        ],
+        borderWidth: 2
+    }]
+};
+
+const topicConfig = {
+    type: 'bar',
+    data: topicData,
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false
+            },
+            title: {
+                display: true,
+                text: 'Precisión por Tema (ordenado de menor a mayor)'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'Precisión: ' + context.parsed.x + '%';
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                    display: true,
+                    text: 'Precisión (%)'
+                }
+            }
+        }
+    }
+};
+
+new Chart(document.getElementById('topicPerformanceChart'), topicConfig);
+{% endif %}
+
+// Progress Over Time Line Chart
+{% if time_series %}
+const progressData = {
+    labels: [
+        {% for day in time_series %}
+        '{{ day.date }}',
+        {% endfor %}
+    ],
+    datasets: [
+        {
+            label: 'Precisión (%)',
+            data: [
+                {% for day in time_series %}
+                {{ day.accuracy }},
+                {% endfor %}
+            ],
+            borderColor: 'rgba(13, 110, 253, 1)',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'y'
+        },
+        {
+            label: 'Ejercicios Realizados',
+            data: [
+                {% for day in time_series %}
+                {{ day.total_exercises }},
+                {% endfor %}
+            ],
+            borderColor: 'rgba(25, 135, 84, 1)',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'y1'
+        }
+    ]
+};
+
+const progressConfig = {
+    type: 'line',
+    data: progressData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        interaction: {
+            mode: 'index',
+            intersect: false
+        },
+        plugins: {
+            title: {
+                display: true,
+                text: 'Evolución del Rendimiento'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed.y !== null) {
+                            if (context.datasetIndex === 0) {
+                                label += context.parsed.y + '%';
+                            } else {
+                                label += context.parsed.y + ' ejercicios';
+                            }
+                        }
+                        return label;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                beginAtZero: true,
+                max: 100,
+                title: {
+                    display: true,
+                    text: 'Precisión (%)'
+                }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Ejercicios'
+                },
+                grid: {
+                    drawOnChartArea: false
+                }
+            }
+        }
+    }
+};
+
+new Chart(document.getElementById('progressChart'), progressConfig);
+{% endif %}
+</script>
+{% endblock %}

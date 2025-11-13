@@ -6,6 +6,7 @@ import json
 from typing import Dict, Any
 from openai import OpenAI
 from app.ai_engines.base import AIEngine
+from app.services.cache_service import cache_service
 
 
 class OpenAIEngine(AIEngine):
@@ -26,8 +27,9 @@ class OpenAIEngine(AIEngine):
         )
         return response.choices[0].message.content
 
+    @cache_service.cache_exercise(ttl=3600)  # Cache for 1 hour
     def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None) -> Dict[str, Any]:
-        """Generate a math exercise using OpenAI"""
+        """Generate a math exercise using OpenAI with caching"""
 
         difficulty_map = {
             'easy': 'nivel básico, conceptos fundamentales',

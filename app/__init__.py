@@ -28,6 +28,15 @@ def create_app(config_name=None):
     app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_SIZE', 52428800))
     app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads/pdfs')
 
+    # Database connection pooling for better performance
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 10,              # Number of connections to keep open
+        'pool_recycle': 3600,          # Recycle connections after 1 hour
+        'pool_pre_ping': True,         # Test connections before using
+        'max_overflow': 20,            # Extra connections beyond pool_size
+        'pool_timeout': 30             # Timeout for getting connection from pool
+    }
+
     # Initialize extensions with app
     db.init_app(app)
     login_manager.init_app(app)

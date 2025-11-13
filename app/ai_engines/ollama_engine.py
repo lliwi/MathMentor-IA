@@ -6,6 +6,7 @@ import json
 import requests
 from typing import Dict, Any
 from app.ai_engines.base import AIEngine
+from app.services.cache_service import cache_service
 
 
 class OllamaEngine(AIEngine):
@@ -32,8 +33,9 @@ class OllamaEngine(AIEngine):
         response.raise_for_status()
         return response.json()['response']
 
+    @cache_service.cache_exercise(ttl=3600)  # Cache for 1 hour
     def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None) -> Dict[str, Any]:
-        """Generate exercise using Ollama"""
+        """Generate exercise using Ollama with caching"""
         prompt = f"""Eres un profesor de matemáticas. Genera un ejercicio de matemáticas.
 
 Tema: {topic}

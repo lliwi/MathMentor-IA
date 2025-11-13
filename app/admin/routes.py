@@ -16,7 +16,9 @@ from app.models.user import User
 from app.models.student_profile import StudentProfile
 from app.services.pdf_processor import PDFProcessor
 from app.services.rag_service import RAGService
+from app.services.analytics_service import AnalyticsService
 from app.ai_engines.factory import AIEngineFactory
+from flask import Response
 
 
 def admin_required(f):
@@ -438,3 +440,114 @@ def student_statistics(student_id):
                          total_submissions=total_submissions,
                          correct_submissions=correct_submissions,
                          assigned_topics=assigned_topics)
+
+
+@admin_bp.route('/student/<int:student_id>/exercise-history')
+@admin_required
+def exercise_history(student_id):
+    """View complete exercise history for a student with filters and pagination"""
+    student = User.query.get_or_404(student_id)
+
+    if student.role != 'student':
+        flash('Este usuario no es un estudiante.', 'error')
+        return redirect(url_for('admin.students'))
+
+    # Get filter parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    topic_id = request.args.get('topic_id', type=int)
+    is_correct = request.args.get('is_correct', type=str)
+    date_from = request.args.get('date_from', type=str)
+    date_to = request.args.get('date_to', type=str)
+
+    # Build filters dict
+    filters = {}
+    if topic_id:
+        filters['topic_id'] = topic_id
+    if is_correct == 'true':
+        filters['is_correct'] = True
+    elif is_correct == 'false':
+        filters['is_correct'] = False
+    if date_from:
+        from datetime import datetime
+        filters['date_from'] = datetime.strptime(date_from, '%Y-%m-%d')
+    if date_to:
+        from datetime import datetime
+        filters['date_to'] = datetime.strptime(date_to, '%Y-%m-%d')
+
+    # Get paginated history
+    history = AnalyticsService.get_student_exercise_history(
+        student_id=student_id,
+        filters=filters,
+        page=page,
+        per_page=per_page
+    )
+
+    # Get all topics for filter dropdown
+    profile = student.student_profile
+    if profile:
+        topic_ids = profile.get_topics()
+        available_topics = Topic.query.filter(Topic.id.in_(topic_ids)).all() if topic_ids else []
+    else:
+        available_topics = []
+
+    return render_template('admin/exercise_history.html',
+                         student=student,
+                         history=history,
+                         available_topics=available_topics,
+                         current_filters={
+                             'topic_id': topic_id,
+                             'is_correct': is_correct,
+                             'date_from': date_from,
+                             'date_to': date_to
+                         })
+
+
+@admin_bp.route('/student/<int:student_id>/topic-analytics')
+@admin_required
+def topic_analytics(student_id):
+    """View topic-based performance analytics for a student"""
+    student = User.query.get_or_404(student_id)
+
+    if student.role != 'student':
+        flash('Este usuario no es un estudiante.', 'error')
+        return redirect(url_for('admin.students'))
+
+    # Get topic performance data
+    topic_performance = AnalyticsService.get_topic_performance(student_id)
+
+    # Get weak topics
+    weak_topics = AnalyticsService.calculate_weak_topics(student_id)
+
+    # Get recommendations
+    recommendations = AnalyticsService.get_recommendations(student_id)
+
+    # Get time series data for chart
+    time_series = AnalyticsService.get_time_series_data(student_id, days=30)
+
+    return render_template('admin/topic_analytics.html',
+                         student=student,
+                         topic_performance=topic_performance,
+                         weak_topics=weak_topics,
+                         recommendations=recommendations,
+                         time_series=time_series)
+
+
+@admin_bp.route('/student/<int:student_id>/export-csv')
+@admin_required
+def export_student_csv(student_id):
+    """Export student exercise history to CSV"""
+    student = User.query.get_or_404(student_id)
+
+    if student.role != 'student':
+        flash('Este usuario no es un estudiante.', 'error')
+        return redirect(url_for('admin.students'))
+
+    # Generate CSV
+    csv_data = AnalyticsService.export_to_csv(student_id)
+
+    # Create response
+    response = Response(csv_data, mimetype='text/csv')
+    response.headers['Content-Disposition'] = f'attachment; filename=student_{student.username}_history.csv'
+
+    return response

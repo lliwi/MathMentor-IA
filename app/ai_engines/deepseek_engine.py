@@ -6,6 +6,7 @@ import json
 import requests
 from typing import Dict, Any
 from app.ai_engines.base import AIEngine
+from app.services.cache_service import cache_service
 
 
 class DeepSeekEngine(AIEngine):
@@ -39,8 +40,9 @@ class DeepSeekEngine(AIEngine):
 
         return response.json()['choices'][0]['message']['content']
 
+    @cache_service.cache_exercise(ttl=3600)  # Cache for 1 hour
     def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None) -> Dict[str, Any]:
-        """Generate exercise - same logic as OpenAI"""
+        """Generate exercise with caching - same logic as OpenAI"""
         difficulty_map = {
             'easy': 'nivel básico, conceptos fundamentales',
             'medium': 'nivel intermedio, requiere varios pasos',

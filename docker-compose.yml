@@ -16,14 +16,33 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: mathmentor_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     build: .
     container_name: mathmentor_web
     command: flask run --host=0.0.0.0
+    env_file:
+      - .env
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://mathmentor_user:mathmentor_password@db:5432/mathmentor
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
       - SECRET_KEY=dev-secret-key-change-in-production
       - PYTHONUNBUFFERED=1
     ports:
@@ -35,6 +54,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:

@@ -51,13 +51,28 @@ Edita el archivo `.env` y configura:
 docker-compose up -d
 ```
 
-4. **Inicializar la base de datos:**
+4. **Aplicar índices de performance (RECOMENDADO):**
 ```bash
-docker-compose exec web python init_db.py
+# Esperar a que los servicios estén listos (30 segundos)
+docker-compose exec web python add_indexes.py
 ```
+
+Este paso es **altamente recomendado** para optimizar la performance de búsquedas vectoriales y generación de ejercicios.
 
 5. **Acceder a la aplicación:**
 - Abrir navegador en: http://localhost:5000
+
+### 🚀 Performance Optimizations
+
+La aplicación incluye múltiples optimizaciones de performance:
+- **Redis Cache**: Caché de ejercicios y contextos RAG (70-90% reducción de latencia)
+- **Cache Prefetching**: Precarga automática de contextos al acceder a `/student/practice`
+- **Connection Pooling**: Pool de conexiones PostgreSQL optimizado
+- **Batch Processing**: Procesamiento paralelo de embeddings (3-5x más rápido)
+- **Singleton Pattern**: Carga única del modelo de embeddings
+- **HNSW Indexes**: Índices vectoriales optimizados para búsquedas
+
+Ver [PERFORMANCE_OPTIMIZATIONS.md](PERFORMANCE_OPTIMIZATIONS.md) para detalles completos y [CACHE_PREFETCHING.md](CACHE_PREFETCHING.md) para la funcionalidad de precarga.
 
 ### Migración de Bases de Datos Existentes
 

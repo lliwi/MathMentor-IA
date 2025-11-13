@@ -2,33 +2,54 @@
 RAG (Retrieval-Augmented Generation) Service
 """
 import os
+import hashlib
 import numpy as np
 from typing import List, Dict, Tuple
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import text
+from cachetools import LRUCache
 from app import db
 from app.models.document_embedding import DocumentEmbedding
 from app.models.book import Book
 from app.models.topic import Topic
+from app.services.cache_service import cache_service
 
 
 class RAGService:
-    """Service for RAG operations (embedding and retrieval)"""
+    """Service for RAG operations (embedding and retrieval) - Singleton pattern"""
+
+    _instance = None
+    _model = None
+    _embedding_cache = None
+    _model_name = None
+
+    def __new__(cls):
+        """Singleton pattern - only one instance of RAG service"""
+        if cls._instance is None:
+            cls._instance = super(RAGService, cls).__new__(cls)
+            cls._model_name = os.getenv('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
+            print(f"[RAGService] Initializing singleton with model: {cls._model_name}")
+            cls._model = SentenceTransformer(cls._model_name)
+            cls._embedding_cache = LRUCache(maxsize=1000)  # Cache for 1000 embeddings
+            print(f"[RAGService] Model loaded successfully, embedding dimension: {cls._model.get_sentence_embedding_dimension()}")
+        return cls._instance
 
     def __init__(self, model_name: str = None):
         """
-        Initialize RAG Service
+        Initialize RAG Service (Singleton - model only loaded once)
 
         Args:
-            model_name: Name of the sentence-transformer model
+            model_name: Name of the sentence-transformer model (ignored after first init)
         """
-        self.model_name = model_name or os.getenv('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
-        self.model = SentenceTransformer(self.model_name)
-        self.embedding_dim = self.model.get_sentence_embedding_dimension()
+        # Model already loaded in __new__
+        self.model_name = self._model_name
+        self.model = self._model
+        self.embedding_dim = self._model.get_sentence_embedding_dimension()
+        self.embedding_cache = self._embedding_cache
 
     def generate_embedding(self, text: str) -> List[float]:
         """
-        Generate embedding vector for text
+        Generate embedding vector for text with caching
 
         Args:
             text: Input text
@@ -36,39 +57,61 @@ class RAGService:
         Returns:
             Embedding vector as list of floats
         """
-        embedding = self.model.encode(text)
-        return embedding.tolist()
+        # Generate cache key
+        cache_key = hashlib.md5(text.encode()).hexdigest()
 
-    def store_chunks(self, book_id: int, chunks: List[Dict[str, any]]) -> int:
+        # Check cache
+        if cache_key in self.embedding_cache:
+            return self.embedding_cache[cache_key]
+
+        # Generate embedding
+        embedding = self.model.encode(text)
+        embedding_list = embedding.tolist()
+
+        # Store in cache
+        self.embedding_cache[cache_key] = embedding_list
+
+        return embedding_list
+
+    def store_chunks(self, book_id: int, chunks: List[Dict[str, any]], batch_size: int = 32) -> int:
         """
-        Generate embeddings and store chunks in database
+        Generate embeddings and store chunks in database using batch processing
 
         Args:
             book_id: ID of the book
             chunks: List of chunk dicts from PDFProcessor
+            batch_size: Number of embeddings to generate at once (default: 32)
 
         Returns:
             Number of chunks stored
         """
         stored_count = 0
 
-        for chunk in chunks:
-            # Generate embedding
-            embedding = self.generate_embedding(chunk['text'])
+        # Process chunks in batches for better performance
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i:i+batch_size]
+            texts = [chunk['text'] for chunk in batch]
 
-            # Create database entry
-            doc_embedding = DocumentEmbedding(
-                book_id=book_id,
-                chunk_text=chunk['text'],
-                chunk_index=chunk['chunk_index'],
-                page_number=chunk['page_number'],
-                embedding=embedding
-            )
+            # Batch encoding (much faster than one-by-one)
+            print(f"[RAGService] Processing batch {i//batch_size + 1}/{(len(chunks)-1)//batch_size + 1} ({len(batch)} chunks)")
+            embeddings = self.model.encode(texts, batch_size=batch_size, show_progress_bar=False)
 
-            db.session.add(doc_embedding)
-            stored_count += 1
+            # Store in database
+            for chunk, embedding in zip(batch, embeddings):
+                doc_embedding = DocumentEmbedding(
+                    book_id=book_id,
+                    chunk_text=chunk['text'],
+                    chunk_index=chunk['chunk_index'],
+                    page_number=chunk['page_number'],
+                    embedding=embedding.tolist()
+                )
+                db.session.add(doc_embedding)
+                stored_count += 1
 
-        db.session.commit()
+            # Commit each batch to avoid memory issues
+            db.session.commit()
+            print(f"[RAGService] Batch committed ({stored_count} chunks processed)")
+
         return stored_count
 
     def retrieve_context(self, query: str, book_id: int = None, topic_id: int = None,
@@ -129,9 +172,10 @@ class RAGService:
 
         return [(row[0], row[1]) for row in results]
 
+    @cache_service.cache_context(ttl=7200)  # Cache for 2 hours
     def get_context_for_topic(self, topic_id: int, top_k: int = 5) -> str:
         """
-        Get relevant context for a topic
+        Get relevant context for a topic with caching
 
         Args:
             topic_id: Topic ID
