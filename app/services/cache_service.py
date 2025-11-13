@@ -223,6 +223,38 @@ class CacheService:
             return wrapper
         return decorator
 
+    def cache_summary(self, ttl: int = 86400):
+        """
+        Decorator to cache topic summaries
+
+        Args:
+            ttl: Cache time-to-live in seconds (default: 24 hours)
+        """
+        def decorator(func: Callable) -> Callable:
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                # Generate cache key from topic
+                cache_key = self.generate_cache_key(
+                    'summary',
+                    topic=kwargs.get('topic', ''),
+                    course=kwargs.get('course', '')
+                )
+
+                # Try cache
+                cached_value = self.get(cache_key)
+                if cached_value:
+                    print(f"[CacheService] Cache HIT for summary: {cache_key}")
+                    return cached_value
+
+                # Generate and cache
+                print(f"[CacheService] Cache MISS for summary: {cache_key}")
+                result = func(*args, **kwargs)
+                self.set(cache_key, result, ttl)
+                return result
+
+            return wrapper
+        return decorator
+
 
 # Singleton instance
 cache_service = CacheService()

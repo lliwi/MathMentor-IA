@@ -82,6 +82,32 @@
     </div>
 
     <div class="col-md-4">
+        <!-- Topic Summaries Card -->
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-book"></i> Resúmenes de Temas</h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">Compra resúmenes para estudiar antes de practicar</p>
+                {% if topics %}
+                <div class="list-group list-group-flush">
+                    {% for topic in topics %}
+                    <div class="list-group-item p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small">{{ topic.topic_name }}</span>
+                            <button class="btn btn-sm btn-success buy-summary-btn" data-topic-id="{{ topic.id }}" data-topic-name="{{ topic.topic_name }}">
+                                <i class="bi bi-cart-plus"></i> 15pts
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted small">No tienes temas asignados. Contacta con tu profesor.</p>
+                {% endif %}
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0"><i class="bi bi-trophy"></i> Tu Progreso</h5>
@@ -102,6 +128,24 @@
                     <strong>Precisión:</strong> {{ stats.accuracy_rate if stats else 0 }}%<br>
                     <strong>Ejercicios:</strong> {{ stats.total_exercises if stats else 0 }}
                 </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Modal -->
+<div class="modal fade" id="summaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-book-fill"></i> Resumen: <span id="summary-topic-name"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="summary-content" class="markdown-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -381,5 +425,71 @@ function newExercise() {
     document.getElementById('feedback-display').classList.add('d-none');
     document.getElementById('no-exercise').classList.remove('d-none');
 }
+
+// Summary purchase functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const summaryButtons = document.querySelectorAll('.buy-summary-btn');
+    const summaryModal = new bootstrap.Modal(document.getElementById('summaryModal'));
+
+    summaryButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const topicId = this.dataset.topicId;
+            const topicName = this.dataset.topicName;
+
+            if (!confirm(`¿Comprar resumen de "${topicName}" por 15 puntos?`)) {
+                return;
+            }
+
+            // Disable button and show loading
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            fetch('{{ url_for("student.buy_summary") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ topic_id: parseInt(topicId) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update points display
+                    document.getElementById('points-display').textContent = data.available_points;
+
+                    // Set modal content
+                    document.getElementById('summary-topic-name').textContent = data.topic_name;
+
+                    // Render markdown content
+                    const summaryHtml = marked.parse(data.summary);
+                    document.getElementById('summary-content').innerHTML = summaryHtml;
+
+                    // Trigger MathJax rendering for LaTeX formulas
+                    if (window.MathJax) {
+                        MathJax.typesetPromise([document.getElementById('summary-content')]);
+                    }
+
+                    // Show modal
+                    summaryModal.show();
+
+                    // Show success message
+                    alert(data.message);
+                } else {
+                    alert(data.message);
+                }
+
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-cart-plus"></i> 15pts';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al comprar el resumen. Por favor, intenta de nuevo.');
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-cart-plus"></i> 15pts';
+            });
+        });
+    });
+});
 </script>
 {% endblock %}

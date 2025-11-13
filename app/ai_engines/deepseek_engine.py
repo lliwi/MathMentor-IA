@@ -234,3 +234,42 @@ Busca especialmente en el índice o tabla de contenidos si está presente."""
             print(f"[DEBUG DeepSeek] ERROR inesperado: {type(e).__name__}: {str(e)}", flush=True)
             sys.stdout.flush()
             return []
+
+    @cache_service.cache_summary(ttl=86400)
+    def generate_topic_summary(self, topic: str, context: str, course: str = None) -> str:
+        """Generate a comprehensive topic summary using DeepSeek with caching"""
+
+        prompt = f"""Eres un profesor de matemáticas experto. Genera un resumen de estudio completo y didáctico sobre el siguiente tema:
+
+TEMA: {topic}
+CURSO: {course or 'No especificado'}
+
+CONTENIDO DEL LIBRO DE TEXTO:
+{context}
+
+Genera un resumen bien estructurado que incluya:
+
+1. **Conceptos Clave**: Lista los conceptos fundamentales del tema
+2. **Definiciones Importantes**: Define los términos técnicos relevantes
+3. **Fórmulas y Propiedades**: Enumera las fórmulas principales y propiedades matemáticas
+4. **Procedimientos**: Explica paso a paso los procedimientos comunes
+5. **Ejemplos Resueltos**: Incluye 1-2 ejemplos completamente resueltos
+6. **Consejos y Trucos**: Añade tips útiles para recordar conceptos o evitar errores comunes
+7. **Relación con Otros Temas**: Menciona cómo se relaciona con otros conceptos matemáticos
+
+El resumen debe:
+- Ser claro y didáctico
+- Usar formato Markdown para una mejor presentación
+- Ser comprensible para estudiantes del nivel especificado
+- Tener una longitud apropiada (800-1200 palabras)
+- Incluir ejemplos prácticos y visuales cuando sea posible
+- Estar basado en el contenido del libro proporcionado
+
+Formato del resumen: Markdown con secciones bien diferenciadas."""
+
+        messages = [
+            {"role": "system", "content": "Eres un profesor de matemáticas experto en crear materiales de estudio didácticos y completos."},
+            {"role": "user", "content": prompt}
+        ]
+
+        return self._call_chat_completion(messages, temperature=0.7)

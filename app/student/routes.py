@@ -75,7 +75,14 @@ def practice():
         # Don't fail the page load if prefetch fails
         print(f"[Practice] Warning: Could not start prefetch: {e}")
 
-    return render_template('student/practice.html', stats=stats)
+    # Get student's assigned topics
+    topics = []
+    if profile:
+        topic_ids = profile.get_topics()
+        if topic_ids:
+            topics = Topic.query.filter(Topic.id.in_(topic_ids)).all()
+    
+    return render_template('student/practice.html', stats=stats, topics=topics)
 
 
 @student_bp.route('/generate-exercise', methods=['POST'])
@@ -380,3 +387,53 @@ def buy_hint():
             'success': False,
             'message': f'Error al generar pista: {str(e)}'
         })
+
+
+@student_bp.route("/buy-summary", methods=["POST"])
+@student_required
+def buy_summary():
+    """Purchase a topic summary using points"""
+    try:
+        data = request.json
+        topic_id = data.get("topic_id")
+
+        # Get topic
+        topic = Topic.query.get(topic_id)
+        if not topic:
+            return jsonify({"success": False, "message": "Tema no encontrado"})
+
+        # Check if student has this topic assigned
+        profile = current_user.student_profile
+        if not profile or topic_id not in profile.get_topics():
+            return jsonify({"success": False, "message": "No tienes este tema asignado"})
+
+        # Purchase summary
+        success, message = ScoringService.purchase_summary(current_user.id)
+        if not success:
+            return jsonify({"success": False, "message": message})
+
+        # Generate summary using AI
+        ai_engine = AIEngineFactory.create()
+        rag_service = RAGService()
+        context = rag_service.get_context_for_topic(topic_id, top_k=5)
+
+        summary = ai_engine.generate_topic_summary(
+            topic=topic.topic_name,
+            context=context,
+            course=profile.course
+        )
+
+        # Get updated stats
+        stats = ScoringService.get_student_statistics(current_user.id)
+
+        return jsonify({
+            "success": True,
+            "summary": summary,
+            "topic_name": topic.topic_name,
+            "message": message,
+            "available_points": stats["available_points"]
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Error al generar resumen: {str(e)}"})
+

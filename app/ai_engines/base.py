@@ -104,3 +104,18 @@ class AIEngine(ABC):
             List of topic names
         """
         pass
+
+    @abstractmethod
+    def generate_topic_summary(self, topic: str, context: str, course: str = None) -> str:
+        """
+        Generate a comprehensive summary of a topic for study
+
+        Args:
+            topic: The topic name
+            context: RAG-retrieved context from textbook
+            course: Course level (e.g., "1º ESO")
+
+        Returns:
+            Formatted summary string with key concepts, formulas, and examples
+        """
+        pass

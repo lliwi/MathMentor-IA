@@ -15,6 +15,7 @@ class ScoringService:
     POINTS_CORRECT_METHODOLOGY = 5
     POINTS_EFFORT_RETRY = 3
     HINT_COST = 5
+    SUMMARY_COST = 15  # Cost to purchase topic summary
 
     # Streak bonus multipliers
     STREAK_BONUSES = {
@@ -138,6 +139,32 @@ class ScoringService:
         if student_score.spend_points(cls.HINT_COST):
             db.session.commit()
             return True, f"Pista comprada. Puntos restantes: {student_score.available_points}"
+        else:
+            return False, "Error al procesar la compra"
+
+    @classmethod
+    def purchase_summary(cls, student_id: int) -> tuple:
+        """
+        Purchase a topic summary using points
+
+        Args:
+            student_id: Student user ID
+
+        Returns:
+            Tuple (success: bool, message: str)
+        """
+        student_score = StudentScore.query.filter_by(student_id=student_id).first()
+
+        if not student_score:
+            return False, "No se encontró el registro de puntuación"
+
+        if student_score.available_points < cls.SUMMARY_COST:
+            return False, f"Puntos insuficientes. Necesitas {cls.SUMMARY_COST} puntos, tienes {student_score.available_points}"
+
+        # Spend points
+        if student_score.spend_points(cls.SUMMARY_COST):
+            db.session.commit()
+            return True, f"Resumen comprado. Puntos restantes: {student_score.available_points}"
         else:
             return False, "Error al procesar la compra"
 
