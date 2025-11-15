@@ -84,7 +84,6 @@ JSON esperado:
 Requisitos:
 - 4-6 procedimientos (algunos correctos, otros no)
 - Descripciones de 1 línea máximo
-- Sin emoticonos
 - Sin texto adicional fuera del JSON"""
 
         messages = [
