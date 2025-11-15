@@ -17,6 +17,7 @@ from app.models.student_profile import StudentProfile
 from app.services.rag_service import RAGService
 from app.services.scoring_service import ScoringService
 from app.services.analytics_service import AnalyticsService
+from app.services.cache_service import CacheService
 from app.ai_engines.factory import AIEngineFactory
 
 
@@ -55,24 +56,92 @@ def _prefetch_contexts_background(app, topic_ids):
             print(f"[Practice] Warning: Context prefetch failed: {e}")
 
 
+def _prefetch_exercises_background(app, topic_ids, course, student_id):
+    """Background task to prefetch exercises for all difficulties into pool"""
+    import time as time_module
+
+    with app.app_context():
+        try:
+            # Small delay to ensure RAG model is initialized
+            time_module.sleep(2)
+
+            rag_service = RAGService()
+            ai_engine = AIEngineFactory.create()
+            cache_service = CacheService()
+
+            # Get student's completed exercises to avoid duplicates
+            completed_exercise_contents = AnalyticsService.get_completed_exercise_contents(student_id)
+
+            prefetch_count = 0
+            difficulties = ['easy', 'medium', 'hard']
+
+            # Prefetch for first 2 topics, all difficulties
+            for topic_id in topic_ids[:2]:
+                topic = Topic.query.get(topic_id)
+                if not topic:
+                    continue
+
+                # Get context (likely already cached)
+                context = rag_service.get_context_for_topic(topic_id, top_k=2)
+                if not context:
+                    continue
+
+                # Generate one exercise per difficulty level
+                for difficulty in difficulties:
+                    max_attempts = 3  # Try up to 3 times to get unique exercise
+
+                    for attempt in range(max_attempts):
+                        # Generate exercise
+                        exercise_data = ai_engine.generate_exercise(
+                            topic=topic.topic_name,
+                            context=context,
+                            difficulty=difficulty,
+                            course=course
+                        )
+
+                        # Check if this exercise content is unique
+                        exercise_content = exercise_data.get('content', '')
+                        if exercise_content not in completed_exercise_contents:
+                            # Add to pool (pool will also check internal duplicates)
+                            cache_service.add_exercise_to_pool(
+                                topic=topic.topic_name,
+                                difficulty=difficulty,
+                                course=course,
+                                exercise_data=exercise_data,
+                                pool_size=5
+                            )
+                            prefetch_count += 1
+                            break  # Got unique exercise, move to next difficulty
+
+            print(f"[Practice] Prefetched {prefetch_count} unique exercises into pool (all difficulties)")
+        except Exception as e:
+            print(f"[Practice] Warning: Exercise prefetch failed: {e}")
+
+
 @student_bp.route('/practice')
 @student_required
 def practice():
     """Practice area - generate and solve exercises"""
     stats = ScoringService.get_student_statistics(current_user.id)
 
-    # Prefetch RAG context in background to warm up cache (non-blocking)
+    # Prefetch RAG context and exercises in background to warm up cache (non-blocking)
     try:
         profile = current_user.student_profile
         if profile:
             topic_ids = profile.get_topics()
             if topic_ids:
-                # Start background thread for prefetching with app context
+                # Start background thread for prefetching contexts
                 app = current_app._get_current_object()
-                thread = threading.Thread(target=_prefetch_contexts_background, args=(app, topic_ids))
-                thread.daemon = True
-                thread.start()
-                print(f"[Practice] Started background prefetch for {len(topic_ids)} topics")
+                context_thread = threading.Thread(target=_prefetch_contexts_background, args=(app, topic_ids))
+                context_thread.daemon = True
+                context_thread.start()
+
+                # Start background thread for prefetching exercises (all difficulties)
+                exercise_thread = threading.Thread(target=_prefetch_exercises_background, args=(app, topic_ids, profile.course, current_user.id))
+                exercise_thread.daemon = True
+                exercise_thread.start()
+
+                print(f"[Practice] Started background prefetch for {len(topic_ids)} topics (contexts + 3 difficulties)")
     except Exception as e:
         # Don't fail the page load if prefetch fails
         print(f"[Practice] Warning: Could not start prefetch: {e}")
@@ -87,11 +156,88 @@ def practice():
     return render_template('student/practice.html', stats=stats, topics=topics)
 
 
+def _prefetch_next_exercise_background(app, topic_id, course, student_id, difficulty):
+    """Background task to prefetch next exercise while student is working"""
+    with app.app_context():
+        try:
+            rag_service = RAGService()
+            ai_engine = AIEngineFactory.create()
+            cache_service = CacheService()
+            topic = Topic.query.get(topic_id)
+
+            if not topic:
+                return
+
+            context = rag_service.get_context_for_topic(topic_id, top_k=2)
+            if not context:
+                return
+
+            # Get student's completed exercises
+            completed_exercise_contents = AnalyticsService.get_completed_exercise_contents(student_id)
+
+            # Try to generate unique exercise and add to pool
+            for attempt in range(3):
+                exercise_data = ai_engine.generate_exercise(
+                    topic=topic.topic_name,
+                    context=context,
+                    difficulty=difficulty,
+                    course=course
+                )
+
+                # Check uniqueness
+                exercise_content = exercise_data.get('content', '')
+                if exercise_content not in completed_exercise_contents:
+                    # Add to pool (pool will also check internal duplicates)
+                    cache_service.add_exercise_to_pool(
+                        topic=topic.topic_name,
+                        difficulty=difficulty,
+                        course=course,
+                        exercise_data=exercise_data,
+                        pool_size=5
+                    )
+                    print(f"[RollingPrefetch] Added exercise to pool ({difficulty}) for topic {topic_id}")
+                    break
+
+        except Exception as e:
+            print(f"[RollingPrefetch] Warning: {e}")
+
+
+@student_bp.route('/prefetch-next', methods=['POST'])
+@student_required
+def prefetch_next():
+    """Prefetch next exercise while student is working (rolling prefetch)"""
+    try:
+        data = request.get_json()
+        topic_id = data.get('topic_id')
+        difficulty = data.get('difficulty', 'medium')
+
+        profile = current_user.student_profile
+        if not profile or not topic_id:
+            return jsonify({'success': False})
+
+        # Start background prefetch
+        app = current_app._get_current_object()
+        thread = threading.Thread(
+            target=_prefetch_next_exercise_background,
+            args=(app, topic_id, profile.course, current_user.id, difficulty)
+        )
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"[RollingPrefetch] Error: {e}")
+        return jsonify({'success': False})
+
+
 @student_bp.route('/generate-exercise', methods=['POST'])
 @student_required
 def generate_exercise():
-    """Generate a new exercise for the student"""
+    """Generate a new exercise for the student using pool-based caching"""
     try:
+        start_total = time.time()
+
         # Get student profile
         profile = current_user.student_profile
         if not profile:
@@ -118,32 +264,40 @@ def generate_exercise():
                 'message': 'Error al cargar el tema.'
             })
 
-        # Get context from RAG
-        start_rag = time.time()
-        rag_service = RAGService()
-        context = rag_service.get_context_for_topic(topic_id, top_k=2)
-        rag_time = time.time() - start_rag
-        print(f"[TIMING] RAG context retrieval: {rag_time:.2f}s")
-
-        # Get list of completed exercise IDs to prevent duplicates
-        start_completed = time.time()
-        completed_exercise_ids = AnalyticsService.get_completed_exercise_ids(current_user.id)
-        completed_time = time.time() - start_completed
-        print(f"[TIMING] Get completed exercises ({len(completed_exercise_ids)} total): {completed_time:.2f}s")
-
-        # Generate exercise using AI
-        start_factory = time.time()
-        ai_engine = AIEngineFactory.create()
-        factory_time = time.time() - start_factory
-        print(f"[TIMING] AI Engine factory creation: {factory_time:.2f}s")
         difficulty = request.json.get('difficulty', 'medium')
+        cache_service = CacheService()
 
-        # Try to generate a unique exercise (max 3 attempts)
-        max_attempts = 3
-        exercise = None
+        # Get list of completed exercise contents to prevent duplicates
+        start_completed = time.time()
+        completed_exercise_contents = AnalyticsService.get_completed_exercise_contents(current_user.id)
+        completed_time = time.time() - start_completed
+        print(f"[TIMING] Get completed exercises ({len(completed_exercise_contents)} total): {completed_time:.3f}s")
 
-        for attempt in range(max_attempts):
+        # Try to get exercise from pool first
+        start_pool = time.time()
+        exercise_data = cache_service.get_exercise_from_pool(
+            topic=topic.topic_name,
+            difficulty=difficulty,
+            course=profile.course,
+            completed_exercise_contents=completed_exercise_contents
+        )
+        pool_time = time.time() - start_pool
+        print(f"[TIMING] Pool lookup: {pool_time:.3f}s")
+
+        # If no exercise in pool, generate a new one
+        if not exercise_data:
+            print(f"[Practice] Pool empty/exhausted - generating new exercise")
+
+            # Get context from RAG
+            start_rag = time.time()
+            rag_service = RAGService()
+            context = rag_service.get_context_for_topic(topic_id, top_k=2)
+            rag_time = time.time() - start_rag
+            print(f"[TIMING] RAG context retrieval: {rag_time:.3f}s")
+
+            # Generate exercise using AI
             start_ai = time.time()
+            ai_engine = AIEngineFactory.create()
             exercise_data = ai_engine.generate_exercise(
                 topic=topic.topic_name,
                 context=context,
@@ -151,82 +305,47 @@ def generate_exercise():
                 course=profile.course
             )
             ai_time = time.time() - start_ai
-            print(f"[TIMING] AI exercise generation (attempt {attempt+1}): {ai_time:.2f}s")
+            print(f"[TIMING] AI exercise generation: {ai_time:.3f}s")
 
-            # Create exercise object
-            start_create = time.time()
-
-            # Convert solution and methodology to strings if they are dict/list
-            solution = exercise_data.get('solution', '')
-            if isinstance(solution, (dict, list)):
-                solution = json.dumps(solution, ensure_ascii=False)
-
-            methodology = exercise_data.get('methodology', '')
-            if isinstance(methodology, (dict, list)):
-                methodology = json.dumps(methodology, ensure_ascii=False)
-
-            new_exercise = Exercise(
-                topic_id=topic_id,
-                content=exercise_data.get('content', ''),
-                solution=solution,
-                methodology=methodology,
-                available_procedures=exercise_data.get('available_procedures', []),
-                expected_procedures=exercise_data.get('expected_procedures', []),
-                difficulty=difficulty
-            )
-            db.session.add(new_exercise)
-            db.session.flush()  # Get ID without committing
-            create_time = time.time() - start_create
-            print(f"[TIMING] Create exercise object + flush: {create_time:.2f}s")
-
-            # Check if this exercise is unique (content-based check)
-            is_duplicate = False
-            if completed_exercise_ids:
-                start_dup = time.time()
-                existing = Exercise.query.filter(
-                    Exercise.id.in_(completed_exercise_ids),
-                    Exercise.content == new_exercise.content
-                ).first()
-                dup_time = time.time() - start_dup
-                print(f"[TIMING] Duplicate check query: {dup_time:.2f}s")
-
-                if existing:
-                    is_duplicate = True
-                    db.session.rollback()
-                    print(f"[Practice] Duplicate exercise detected (attempt {attempt + 1}), regenerating...")
-                    continue  # Try again
-
-            # Not a duplicate, commit and use this exercise
-            start_commit = time.time()
-            exercise = new_exercise
-            db.session.commit()
-            commit_time = time.time() - start_commit
-            print(f"[TIMING] DB commit: {commit_time:.2f}s")
-            break
-
-        # If still None after max attempts, generate one final time and use it
-        if exercise is None:
-            print(f"[Practice] Warning: Could not generate unique exercise after {max_attempts} attempts, using last one")
-            exercise_data = ai_engine.generate_exercise(
+            # Add to pool for future use
+            cache_service.add_exercise_to_pool(
                 topic=topic.topic_name,
-                context=context,
                 difficulty=difficulty,
-                course=profile.course
+                course=profile.course,
+                exercise_data=exercise_data,
+                pool_size=5
             )
-            exercise = Exercise(
-                topic_id=topic_id,
-                content=exercise_data.get('content', ''),
-                solution=exercise_data.get('solution', ''),
-                methodology=exercise_data.get('methodology', ''),
-                available_procedures=exercise_data.get('available_procedures', []),
-                expected_procedures=exercise_data.get('expected_procedures', []),
-                difficulty=difficulty
-            )
-            db.session.add(exercise)
-            db.session.commit()
+
+        # Convert solution and methodology to strings if they are dict/list
+        solution = exercise_data.get('solution', '')
+        if isinstance(solution, (dict, list)):
+            solution = json.dumps(solution, ensure_ascii=False)
+
+        methodology = exercise_data.get('methodology', '')
+        if isinstance(methodology, (dict, list)):
+            methodology = json.dumps(methodology, ensure_ascii=False)
+
+        # Create exercise object in database
+        start_db = time.time()
+        exercise = Exercise(
+            topic_id=topic_id,
+            content=exercise_data.get('content', ''),
+            solution=solution,
+            methodology=methodology,
+            available_procedures=exercise_data.get('available_procedures', []),
+            expected_procedures=exercise_data.get('expected_procedures', []),
+            difficulty=difficulty
+        )
+        db.session.add(exercise)
+        db.session.commit()
+        db_time = time.time() - start_db
+        print(f"[TIMING] Database save: {db_time:.3f}s")
 
         # Store exercise ID in session
         session['current_exercise_id'] = exercise.id
+
+        total_time = time.time() - start_total
+        print(f"[TIMING] TOTAL generate_exercise: {total_time:.3f}s")
 
         return jsonify({
             'success': True,
@@ -234,6 +353,7 @@ def generate_exercise():
                 'id': exercise.id,
                 'content': exercise.content,
                 'topic': topic.topic_name,
+                'topic_id': topic_id,
                 'difficulty': difficulty,
                 'available_procedures': exercise.available_procedures or []
             }

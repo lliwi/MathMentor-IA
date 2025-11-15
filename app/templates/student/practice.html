@@ -216,6 +216,9 @@ function generateExercise() {
             if (typeof MathJax !== 'undefined') {
                 MathJax.typesetPromise([document.getElementById('exercise-content')]).catch((err) => console.log('MathJax error:', err));
             }
+
+            // Trigger rolling prefetch: cache next exercise while student works
+            prefetchNextExercise(data.exercise.topic_id, data.exercise.difficulty);
         } else {
             alert('Error: ' + data.message);
         }
@@ -266,6 +269,29 @@ function displayProcedures(procedures) {
 function getSelectedProcedures() {
     const checkboxes = document.querySelectorAll('#procedures-list input[type="checkbox"]:checked');
     return Array.from(checkboxes).map(cb => parseInt(cb.value));
+}
+
+function prefetchNextExercise(topicId, difficulty) {
+    // Rolling prefetch: cache next exercise while student works on current one
+    fetch('{{ url_for("student.prefetch_next") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            topic_id: topicId,
+            difficulty: difficulty
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('[RollingPrefetch] Next exercise caching started');
+        }
+    })
+    .catch(error => {
+        console.log('[RollingPrefetch] Failed to start:', error);
+    });
 }
 
 function submitExercise() {

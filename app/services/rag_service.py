@@ -5,6 +5,7 @@ import os
 import hashlib
 import numpy as np
 import time
+import threading
 from typing import List, Dict, Tuple
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import text
@@ -23,17 +24,15 @@ class RAGService:
     _model = None
     _embedding_cache = None
     _model_name = None
+    _lock = threading.Lock()
+    _initialized = False
 
     def __new__(cls):
-        """Singleton pattern - only one instance of RAG service"""
-        if cls._instance is None:
-            cls._instance = super(RAGService, cls).__new__(cls)
-            cls._model_name = os.getenv('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
-            print(f"[RAGService] Initializing singleton with model: {cls._model_name}")
-            cls._model = SentenceTransformer(cls._model_name)
-            cls._embedding_cache = LRUCache(maxsize=5000)  # Cache for 5000 embeddings
-            print(f"[RAGService] Model loaded successfully, embedding dimension: {cls._model.get_sentence_embedding_dimension()}")
-        return cls._instance
+        """Singleton pattern - only one instance of RAG service with thread safety"""
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(RAGService, cls).__new__(cls)
+            return cls._instance
 
     def __init__(self, model_name: str = None):
         """
@@ -42,10 +41,24 @@ class RAGService:
         Args:
             model_name: Name of the sentence-transformer model (ignored after first init)
         """
-        # Model already loaded in __new__
+        # Thread-safe initialization
+        with self._lock:
+            if not self._initialized:
+                self._model_name = os.getenv('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
+                print(f"[RAGService] Initializing singleton with model: {self._model_name}")
+                try:
+                    self._model = SentenceTransformer(self._model_name)
+                    self._embedding_cache = LRUCache(maxsize=5000)
+                    self._initialized = True
+                    print(f"[RAGService] Model loaded successfully, embedding dimension: {self._model.get_sentence_embedding_dimension()}")
+                except Exception as e:
+                    print(f"[RAGService] Error loading model: {e}")
+                    raise
+
+        # Set instance attributes
         self.model_name = self._model_name
         self.model = self._model
-        self.embedding_dim = self._model.get_sentence_embedding_dimension()
+        self.embedding_dim = self._model.get_sentence_embedding_dimension() if self._model else None
         self.embedding_cache = self._embedding_cache
 
     def generate_embedding(self, text: str) -> List[float]:

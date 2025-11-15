@@ -156,9 +156,92 @@ class CacheService:
         hash_value = hashlib.md5(params_str.encode()).hexdigest()
         return f"{prefix}:{hash_value}"
 
+    def add_exercise_to_pool(self, topic: str, difficulty: str, course: str, exercise_data: dict, pool_size: int = 5) -> None:
+        """
+        Add exercise to pool cache (stores multiple unique exercises per topic/difficulty)
+
+        Args:
+            topic: Topic name
+            difficulty: Difficulty level
+            course: Course level
+            exercise_data: Exercise data to cache
+            pool_size: Maximum number of exercises to keep in pool
+        """
+        if not self.is_available():
+            return
+
+        pool_key = self.generate_cache_key(
+            'exercise_pool',
+            topic=topic,
+            difficulty=difficulty,
+            course=course
+        )
+
+        try:
+            # Get existing pool
+            pool = self.get(pool_key) or []
+
+            # Check if exercise already exists in pool (by content)
+            exercise_content = exercise_data.get('content', '')
+            if any(ex.get('content') == exercise_content for ex in pool):
+                return
+
+            # Add to pool (FIFO if full)
+            pool.append(exercise_data)
+            if len(pool) > pool_size:
+                pool = pool[-pool_size:]  # Keep last N exercises
+
+            # Save pool with 1 hour TTL
+            self.set(pool_key, pool, ttl=3600)
+            print(f"[CacheService] Added to exercise pool ({len(pool)}/{pool_size}): {pool_key}")
+        except Exception as e:
+            print(f"[CacheService] Error adding to pool: {e}")
+
+    def get_exercise_from_pool(self, topic: str, difficulty: str, course: str, completed_exercise_contents: list = None) -> Optional[dict]:
+        """
+        Get an unused exercise from pool
+
+        Args:
+            topic: Topic name
+            difficulty: Difficulty level
+            course: Course level
+            completed_exercise_contents: List of completed exercise contents to exclude
+
+        Returns:
+            Exercise data or None if no unused exercises available
+        """
+        if not self.is_available():
+            return None
+
+        pool_key = self.generate_cache_key(
+            'exercise_pool',
+            topic=topic,
+            difficulty=difficulty,
+            course=course
+        )
+
+        try:
+            pool = self.get(pool_key)
+            if not pool:
+                return None
+
+            completed_exercise_contents = completed_exercise_contents or []
+
+            # Find first exercise not in completed list
+            for exercise in pool:
+                if exercise.get('content') not in completed_exercise_contents:
+                    print(f"[CacheService] Pool HIT - returning unused exercise from pool of {len(pool)}")
+                    return exercise
+
+            print(f"[CacheService] Pool exhausted - all {len(pool)} exercises completed")
+            return None
+        except Exception as e:
+            print(f"[CacheService] Error getting from pool: {e}")
+            return None
+
     def cache_exercise(self, ttl: int = 3600):
         """
-        Decorator to cache exercise generation
+        Decorator to cache exercise generation (DEPRECATED - use pool methods instead)
 
         Args:
             ttl: Cache time-to-live in seconds (default: 1 hour)
@@ -166,35 +249,11 @@ class CacheService:
         def decorator(func: Callable) -> Callable:
             @wraps(func)
             def wrapper(*args, **kwargs):
-                # Generate cache key
-                cache_key = self.generate_cache_key(
-                    'exercise',
-                    topic=kwargs.get('topic', ''),
-                    difficulty=kwargs.get('difficulty', 'medium'),
-                    course=kwargs.get('course', '')
-                )
-
-                # Try cache
-                start_cache_get = time.time()
-                cached_value = self.get(cache_key)
-                cache_get_time = time.time() - start_cache_get
-                print(f"[CACHE-TIMING] Exercise Redis GET: {cache_get_time:.3f}s")
-
-                if cached_value:
-                    print(f"[CacheService] Cache HIT for exercise: {cache_key}")
-                    return cached_value
-
-                # Generate and cache
-                print(f"[CacheService] Cache MISS for exercise: {cache_key}")
+                # Generate and cache (no longer using single-exercise cache)
                 start_func = time.time()
                 result = func(*args, **kwargs)
                 func_time = time.time() - start_func
                 print(f"[CACHE-TIMING] AI generate_exercise call: {func_time:.3f}s")
-
-                start_cache_set = time.time()
-                self.set(cache_key, result, ttl)
-                cache_set_time = time.time() - start_cache_set
-                print(f"[CACHE-TIMING] Exercise Redis SET: {cache_set_time:.3f}s")
 
                 return result
 

@@ -102,6 +102,26 @@ class AnalyticsService:
         return [row[0] for row in result]
 
     @staticmethod
+    def get_completed_exercise_contents(student_id):
+        """
+        Get list of exercise contents the student has already completed
+        Used for pool-based duplicate prevention
+
+        Args:
+            student_id: Student user ID
+
+        Returns:
+            List of exercise content strings
+        """
+        result = db.session.query(Exercise.content).join(
+            Submission, Submission.exercise_id == Exercise.id
+        ).filter(
+            Submission.student_id == student_id
+        ).distinct().all()
+
+        return [row[0] for row in result]
+
+    @staticmethod
     def get_topic_performance(student_id):
         """
         Get detailed performance metrics per topic
