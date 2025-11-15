@@ -1,8 +1,10 @@
 """
 Student routes
 """
+import json
 import random
 import threading
+import time
 from flask import render_template, redirect, url_for, flash, request, jsonify, session, current_app
 from flask_login import login_required, current_user
 from functools import wraps
@@ -117,14 +119,23 @@ def generate_exercise():
             })
 
         # Get context from RAG
+        start_rag = time.time()
         rag_service = RAGService()
-        context = rag_service.get_context_for_topic(topic_id, top_k=3)
+        context = rag_service.get_context_for_topic(topic_id, top_k=2)
+        rag_time = time.time() - start_rag
+        print(f"[TIMING] RAG context retrieval: {rag_time:.2f}s")
 
         # Get list of completed exercise IDs to prevent duplicates
+        start_completed = time.time()
         completed_exercise_ids = AnalyticsService.get_completed_exercise_ids(current_user.id)
+        completed_time = time.time() - start_completed
+        print(f"[TIMING] Get completed exercises ({len(completed_exercise_ids)} total): {completed_time:.2f}s")
 
         # Generate exercise using AI
+        start_factory = time.time()
         ai_engine = AIEngineFactory.create()
+        factory_time = time.time() - start_factory
+        print(f"[TIMING] AI Engine factory creation: {factory_time:.2f}s")
         difficulty = request.json.get('difficulty', 'medium')
 
         # Try to generate a unique exercise (max 3 attempts)
@@ -132,33 +143,52 @@ def generate_exercise():
         exercise = None
 
         for attempt in range(max_attempts):
+            start_ai = time.time()
             exercise_data = ai_engine.generate_exercise(
                 topic=topic.topic_name,
                 context=context,
                 difficulty=difficulty,
                 course=profile.course
             )
+            ai_time = time.time() - start_ai
+            print(f"[TIMING] AI exercise generation (attempt {attempt+1}): {ai_time:.2f}s")
 
             # Create exercise object
+            start_create = time.time()
+
+            # Convert solution and methodology to strings if they are dict/list
+            solution = exercise_data.get('solution', '')
+            if isinstance(solution, (dict, list)):
+                solution = json.dumps(solution, ensure_ascii=False)
+
+            methodology = exercise_data.get('methodology', '')
+            if isinstance(methodology, (dict, list)):
+                methodology = json.dumps(methodology, ensure_ascii=False)
+
             new_exercise = Exercise(
                 topic_id=topic_id,
                 content=exercise_data.get('content', ''),
-                solution=exercise_data.get('solution', ''),
-                methodology=exercise_data.get('methodology', ''),
+                solution=solution,
+                methodology=methodology,
                 available_procedures=exercise_data.get('available_procedures', []),
                 expected_procedures=exercise_data.get('expected_procedures', []),
                 difficulty=difficulty
             )
             db.session.add(new_exercise)
             db.session.flush()  # Get ID without committing
+            create_time = time.time() - start_create
+            print(f"[TIMING] Create exercise object + flush: {create_time:.2f}s")
 
             # Check if this exercise is unique (content-based check)
             is_duplicate = False
             if completed_exercise_ids:
+                start_dup = time.time()
                 existing = Exercise.query.filter(
                     Exercise.id.in_(completed_exercise_ids),
                     Exercise.content == new_exercise.content
                 ).first()
+                dup_time = time.time() - start_dup
+                print(f"[TIMING] Duplicate check query: {dup_time:.2f}s")
 
                 if existing:
                     is_duplicate = True
@@ -167,8 +197,11 @@ def generate_exercise():
                     continue  # Try again
 
             # Not a duplicate, commit and use this exercise
+            start_commit = time.time()
             exercise = new_exercise
             db.session.commit()
+            commit_time = time.time() - start_commit
+            print(f"[TIMING] DB commit: {commit_time:.2f}s")
             break
 
         # If still None after max attempts, generate one final time and use it
@@ -415,7 +448,7 @@ def buy_summary():
         # Generate summary using AI
         ai_engine = AIEngineFactory.create()
         rag_service = RAGService()
-        context = rag_service.get_context_for_topic(topic_id, top_k=5)
+        context = rag_service.get_context_for_topic(topic_id, top_k=3)
 
         summary = ai_engine.generate_topic_summary(
             topic=topic.topic_name,

@@ -4,6 +4,7 @@ Cache Service using Redis for exercise generation and context retrieval
 import os
 import json
 import hashlib
+import time
 from functools import wraps
 from typing import Optional, Any, Callable
 import redis
@@ -174,15 +175,27 @@ class CacheService:
                 )
 
                 # Try cache
+                start_cache_get = time.time()
                 cached_value = self.get(cache_key)
+                cache_get_time = time.time() - start_cache_get
+                print(f"[CACHE-TIMING] Exercise Redis GET: {cache_get_time:.3f}s")
+
                 if cached_value:
                     print(f"[CacheService] Cache HIT for exercise: {cache_key}")
                     return cached_value
 
                 # Generate and cache
                 print(f"[CacheService] Cache MISS for exercise: {cache_key}")
+                start_func = time.time()
                 result = func(*args, **kwargs)
+                func_time = time.time() - start_func
+                print(f"[CACHE-TIMING] AI generate_exercise call: {func_time:.3f}s")
+
+                start_cache_set = time.time()
                 self.set(cache_key, result, ttl)
+                cache_set_time = time.time() - start_cache_set
+                print(f"[CACHE-TIMING] Exercise Redis SET: {cache_set_time:.3f}s")
+
                 return result
 
             return wrapper
@@ -209,15 +222,27 @@ class CacheService:
                 )
 
                 # Try cache
+                start_cache_get = time.time()
                 cached_value = self.get(cache_key)
+                cache_get_time = time.time() - start_cache_get
+                print(f"[CACHE-TIMING] Redis GET operation: {cache_get_time:.3f}s")
+
                 if cached_value:
                     print(f"[CacheService] Cache HIT for context: {cache_key}")
                     return cached_value
 
                 # Generate and cache
                 print(f"[CacheService] Cache MISS for context: {cache_key}")
+                start_func = time.time()
                 result = func(*args, **kwargs)
+                func_time = time.time() - start_func
+                print(f"[CACHE-TIMING] Function execution (cache miss): {func_time:.3f}s")
+
+                start_cache_set = time.time()
                 self.set(cache_key, result, ttl)
+                cache_set_time = time.time() - start_cache_set
+                print(f"[CACHE-TIMING] Redis SET operation: {cache_set_time:.3f}s")
+
                 return result
 
             return wrapper

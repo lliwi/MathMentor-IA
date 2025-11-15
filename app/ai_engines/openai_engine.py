@@ -3,6 +3,7 @@ OpenAI Engine implementation
 """
 import os
 import json
+import time
 from typing import Dict, Any
 from openai import OpenAI
 from app.ai_engines.base import AIEngine
@@ -20,12 +21,22 @@ class OpenAIEngine(AIEngine):
 
     def _call_chat_completion(self, messages: list, temperature: float = 0.7) -> str:
         """Helper method to call OpenAI chat completion"""
+        start_api = time.time()
+        print(f"[AI-TIMING] Calling OpenAI API with model={self.model}, temperature={temperature}")
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature
         )
-        return response.choices[0].message.content
+        api_time = time.time() - start_api
+        print(f"[AI-TIMING] OpenAI API call completed: {api_time:.2f}s")
+
+        start_extract = time.time()
+        content = response.choices[0].message.content
+        extract_time = time.time() - start_extract
+        print(f"[AI-TIMING] Extract response content: {extract_time:.3f}s")
+
+        return content
 
     @cache_service.cache_exercise(ttl=3600)  # Cache for 1 hour
     def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None) -> Dict[str, Any]:
@@ -37,48 +48,38 @@ class OpenAIEngine(AIEngine):
             'hard': 'nivel avanzado, requiere pensamiento crítico'
         }
 
-        prompt = f"""Eres un profesor de matemáticas experto. Genera UN ejercicio de matemáticas con las siguientes características:
+        prompt = f"""Genera un ejercicio de matemáticas en JSON:
 
 Tema: {topic}
 Curso: {course or 'No especificado'}
 Dificultad: {difficulty_map.get(difficulty, 'medio')}
+Contexto: {context[:500]}
 
-Contexto del libro de texto:
-{context}
-
-Genera el ejercicio en formato JSON con esta estructura exacta:
+JSON esperado:
 {{
-    "content": "Enunciado completo del ejercicio",
-    "solution": "Respuesta correcta (solo el resultado final)",
-    "methodology": "Pasos detallados para resolver el ejercicio",
+    "content": "Enunciado del ejercicio",
+    "solution": "Resultado final",
+    "methodology": "Pasos de resolución",
     "available_procedures": [
-        {{"id": 1, "name": "Nombre del procedimiento/técnica/propiedad", "description": "Breve explicación de qué es y cuándo se usa"}},
-        {{"id": 2, "name": "Otro procedimiento", "description": "Breve explicación"}},
-        ...
+        {{"id": 1, "name": "Procedimiento", "description": "Qué es"}},
+        {{"id": 2, "name": "Otro", "description": "Qué es"}}
     ],
-    "expected_procedures": [1, 3, 5]
+    "expected_procedures": [1, 3]
 }}
 
-IMPORTANTE sobre los procedimientos:
-- available_procedures: Lista TODAS las técnicas, propiedades, reglas o procedimientos matemáticos relacionados con el ejercicio (tanto correctos como incorrectos)
-- expected_procedures: IDs de los procedimientos que son necesarios para resolver correctamente el ejercicio
-- Incluye al menos 6-10 procedimientos disponibles (algunos correctos, algunos incorrectos o no aplicables)
-- Los procedimientos deben ser específicos (ej: "Propiedad distributiva", "Teorema de Pitágoras", "Factorización por diferencia de cuadrados")
-- IMPORTANTE: Cada procedimiento DEBE incluir una "description" breve (1-2 líneas) que explique qué es y cuándo se usa
-
-El ejercicio debe:
-- Estar basado en el contenido del libro
-- Ser claro y bien formulado
-- Incluir todos los datos necesarios
-- Tener una solución única y verificable"""
+Requisitos:
+- 4-6 procedimientos (algunos correctos, otros no)
+- Descripciones de 1 línea máximo
+- Sin texto adicional fuera del JSON"""
 
         messages = [
             {"role": "system", "content": "Eres un profesor de matemáticas experto en crear ejercicios didácticos."},
             {"role": "user", "content": prompt}
         ]
 
-        response = self._call_chat_completion(messages, temperature=0.8)
+        response = self._call_chat_completion(messages, temperature=0.5)
 
+        start_parse = time.time()
         try:
             # Extract JSON from response
             if '```json' in response:
@@ -87,6 +88,8 @@ El ejercicio debe:
                 response = response.split('```')[1].split('```')[0].strip()
 
             exercise_data = json.loads(response)
+            parse_time = time.time() - start_parse
+            print(f"[AI-TIMING] JSON parsing: {parse_time:.3f}s")
             return exercise_data
         except json.JSONDecodeError:
             # Fallback if JSON parsing fails

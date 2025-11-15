@@ -33,6 +33,7 @@ tiktoken==0.5.2
 
 # HTTP requests
 requests==2.31.0
+httpx<0.28.0  # Pin to version compatible with openai==1.54.0
 
 # Utilities
 python-dateutil==2.8.2
