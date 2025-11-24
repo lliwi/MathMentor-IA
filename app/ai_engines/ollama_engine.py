@@ -58,7 +58,9 @@ Responde en formato JSON:
 }}
 
 Incluye 6-10 procedimientos matemáticos (algunos correctos, otros no aplicables).
-IMPORTANTE: Cada procedimiento debe tener "description" que explique qué es."""
+IMPORTANTE: Cada procedimiento debe tener "description" que explique qué es.
+IMPORTANTE: Usa emoticonos apropiados para hacer el ejercicio más divertido y motivador
+  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲"""
 
         response = self._call_generate(prompt, temperature=0.8)
 
@@ -71,15 +73,22 @@ IMPORTANTE: Cada procedimiento debe tener "description" que explique qué es."""
 
     def evaluate_submission(self, exercise: str, expected_solution: str, expected_methodology: str,
                           student_answer: str, student_methodology: str) -> Dict[str, Any]:
-        """Evaluate submission using Ollama"""
+        """Evaluate submission using Ollama with coherent reference"""
         prompt = f"""Evalúa esta solución de matemáticas.
+
 Ejercicio: {exercise}
-Respuesta esperada: {expected_solution}
+
+SOLUCIÓN CORRECTA (REFERENCIA ÚNICA): {expected_solution}
+
 Respuesta estudiante: {student_answer}
+
+IMPORTANTE: La SOLUCIÓN CORRECTA es LA ÚNICA válida. NO recalcules el problema. Compara exactamente con esta solución.
+IMPORTANTE: Usa emoticonos apropiados para hacer el feedback más amigable y motivador
+  Ejemplos: ✅ ❌ 👍 💪 🎯 ⭐ 🤔 💡 📝 ✨ 🚀
 
 Responde en JSON: {{"is_correct_result": true/false, "is_correct_methodology": true/false, "errors_found": [], "feedback": ""}}"""
 
-        response = self._call_generate(prompt, temperature=0.3)
+        response = self._call_generate(prompt, temperature=0.2)
 
         try:
             if '```json' in response:
@@ -93,21 +102,36 @@ Responde en JSON: {{"is_correct_result": true/false, "is_correct_methodology": t
                 'feedback': response
             }
 
-    def generate_feedback(self, exercise: str, student_answer: str, student_methodology: str,
-                         errors: list, context: str = None) -> str:
-        """Generate feedback using Ollama"""
+    def generate_feedback(self, exercise: str, expected_solution: str, student_answer: str,
+                         student_methodology: str, errors: list, context: str = None) -> str:
+        """Generate feedback using Ollama with coherent reference"""
         prompt = f"""Genera retroalimentación didáctica.
+
 Ejercicio: {exercise}
+
+SOLUCIÓN CORRECTA (REFERENCIA ÚNICA): {expected_solution}
+
 Respuesta: {student_answer}
 Errores: {', '.join(errors)}
 
-Explica los errores de forma educativa."""
+IMPORTANTE: Compara con la SOLUCIÓN CORRECTA únicamente. NO recalcules. Explica errores basándote en la diferencia con la solución correcta.
+IMPORTANTE: Usa emoticonos apropiados para hacer el feedback más amigable y motivador
+  Ejemplos: 💡 🤔 ✨ 📝 👀 ⚠️ 💪 🎯 ⭐ 🚀 ✅ 📚"""
 
-        return self._call_generate(prompt, temperature=0.7)
+        return self._call_generate(prompt, temperature=0.5)
 
     def generate_hint(self, exercise: str, context: str = None) -> str:
         """Generate hint using Ollama"""
-        prompt = f"Genera una pista breve sin revelar la solución: {exercise}"
+        prompt = f"""Genera una pista breve para ayudar a resolver este ejercicio sin dar la solución:
+
+EJERCICIO:
+{exercise}
+
+INSTRUCCIONES:
+- Proporciona una pista orientadora, no resuelvas el problema
+- Mantén la pista breve y concisa
+- IMPORTANTE: Usa emoticonos apropiados para hacer la pista más amigable y motivadora
+  Ejemplos: 💡 🤔 🎯 👀 ✨ 🔍 💭 🌟 📌 🔑"""
         return self._call_generate(prompt, temperature=0.7)
 
     def extract_topics(self, text_chunks: list, book_metadata: Dict[str, str]) -> list:
@@ -172,15 +196,12 @@ El resumen debe:
 - Tener una longitud apropiada (800-1200 palabras)
 - Incluir ejemplos prácticos y visuales cuando sea posible
 - Estar basado en el contenido del libro proporcionado
+- IMPORTANTE: Usa emoticonos apropiados para hacer el resumen más visual, amigable y motivador
+  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 📝 ✨ 🚀 📚 🔍 💭 ⚡ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲 ✅ ⚠️ 💪 👀 🌟 📌 🔑
 
 Formato del resumen: Markdown con secciones bien diferenciadas."""
 
-        messages = [
-            {"role": "system", "content": "Eres un profesor de matemáticas experto en crear materiales de estudio didácticos y completos."},
-            {"role": "user", "content": prompt}
-        ]
-
-        return self._call_chat_completion(messages, temperature=0.7)
+        return self._call_generate(prompt, temperature=0.7)
 
     def generate_visual_scheme(self, exercise: str, context: str = None) -> str:
         """Generate a visual scheme using Mermaid diagram syntax"""
@@ -216,12 +237,7 @@ graph TD
     C --> D[Realizar operaciones]
     D --> E[Verificar resultado]"""
 
-        messages = [
-            {"role": "system", "content": "Eres un experto en visualización de problemas matemáticos que crea diagramas Mermaid claros y didácticos."},
-            {"role": "user", "content": prompt}
-        ]
-
-        response = self._call_chat_completion(messages, temperature=0.5)
+        response = self._call_generate(prompt, temperature=0.5)
 
         # Clean up response - remove markdown code blocks if present
         if '```mermaid' in response:

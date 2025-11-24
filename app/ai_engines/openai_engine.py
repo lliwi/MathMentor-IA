@@ -70,7 +70,9 @@ JSON esperado:
 Requisitos:
 - 4-6 procedimientos (algunos correctos, otros no)
 - Descripciones de 1 línea máximo
-- Sin texto adicional fuera del JSON"""
+- Sin texto adicional fuera del JSON
+- IMPORTANTE: Usa emoticonos apropiados para hacer el ejercicio más divertido y motivador
+  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲"""
 
         messages = [
             {"role": "system", "content": "Eres un profesor de matemáticas experto en crear ejercicios didácticos."},
@@ -108,7 +110,7 @@ Requisitos:
 EJERCICIO:
 {exercise}
 
-SOLUCIÓN ESPERADA:
+SOLUCIÓN CORRECTA (REFERENCIA ÚNICA):
 {expected_solution}
 
 METODOLOGÍA ESPERADA:
@@ -120,26 +122,36 @@ RESPUESTA DEL ESTUDIANTE:
 PROCEDIMIENTO DEL ESTUDIANTE:
 {student_methodology}
 
-Evalúa lo siguiente y responde en formato JSON:
+INSTRUCCIONES CRÍTICAS:
+- La "SOLUCIÓN CORRECTA" mostrada arriba es LA ÚNICA respuesta válida
+- Compara la respuesta del estudiante EXACTAMENTE con esta solución
+- NO reinterpretes ni recalcules el problema
+- Si la respuesta del estudiante es matemáticamente equivalente a la solución correcta, marca como correcta
+- Considera variaciones de formato (ej: 0.5 = 1/2) como correctas
+
+Evalúa y responde en formato JSON:
 {{
     "is_correct_result": true/false,
     "is_correct_methodology": true/false,
     "errors_found": ["lista", "de", "errores"],
-    "feedback": "Retroalimentación detallada"
+    "feedback": "Retroalimentación breve"
 }}
 
 Criterios:
-- is_correct_result: ¿La respuesta final es correcta?
-- is_correct_methodology: ¿El procedimiento es correcto aunque haya errores de cálculo menores?
-- errors_found: Lista específica de errores conceptuales o procedimentales
-- feedback: Explicación didáctica breve (se generará feedback detallado después si es necesario)"""
+- is_correct_result: ¿La respuesta es matemáticamente equivalente a la SOLUCIÓN CORRECTA?
+- is_correct_methodology: ¿El procedimiento es correcto?
+- errors_found: Lista específica de errores encontrados
+- feedback: Explicación breve motivadora (se generará feedback detallado después si es necesario)
+
+IMPORTANTE: Usa emoticonos apropiados para hacer el feedback más amigable y motivador
+Ejemplos: ✅ ❌ 👍 💪 🎯 ⭐ 🤔 💡 📝 ✨ 🚀"""
 
         messages = [
-            {"role": "system", "content": "Eres un profesor de matemáticas experto en evaluar trabajos de estudiantes."},
+            {"role": "system", "content": "Eres un profesor de matemáticas experto en evaluar trabajos. IMPORTANTE: Usa SIEMPRE la solución proporcionada como referencia única. No recalcules ni reinterpretes el problema. Usa emoticonos para hacer el feedback más motivador."},
             {"role": "user", "content": prompt}
         ]
 
-        response = self._call_chat_completion(messages, temperature=0.3)
+        response = self._call_chat_completion(messages, temperature=0.2)
 
         try:
             if '```json' in response:
@@ -157,14 +169,17 @@ Criterios:
                 'feedback': response
             }
 
-    def generate_feedback(self, exercise: str, student_answer: str, student_methodology: str,
-                         errors: list, context: str = None) -> str:
+    def generate_feedback(self, exercise: str, expected_solution: str, student_answer: str,
+                         student_methodology: str, errors: list, context: str = None) -> str:
         """Generate detailed feedback using OpenAI"""
 
         prompt = f"""Genera retroalimentación didáctica detallada para un estudiante.
 
 EJERCICIO:
 {exercise}
+
+SOLUCIÓN CORRECTA (REFERENCIA ÚNICA):
+{expected_solution}
 
 RESPUESTA DEL ESTUDIANTE:
 {student_answer}
@@ -175,21 +190,27 @@ PROCEDIMIENTO DEL ESTUDIANTE:
 ERRORES IDENTIFICADOS:
 {', '.join(errors)}
 
+INSTRUCCIONES CRÍTICAS:
+- La "SOLUCIÓN CORRECTA" es la única respuesta válida
+- Compara la respuesta del estudiante con esta solución EXACTAMENTE
+- NO recalcules el problema ni propongas soluciones alternativas
+- Explica los errores basándote en la diferencia con la SOLUCIÓN CORRECTA
+
 Genera retroalimentación que:
 1. Identifique específicamente dónde está el error
-2. Explique por qué es incorrecto
-3. Proporcione la forma correcta de abordarlo
+2. Explique por qué es incorrecto comparando con la SOLUCIÓN CORRECTA
+3. Guíe al estudiante hacia la solución correcta sin resolverlo completamente
 4. Use un tono motivador y educativo
-5. Incluya un ejemplo o pista para ayudar al estudiante
-
-La retroalimentación debe ser clara, concisa pero completa (máximo 200 palabras)."""
+5. Sea concisa pero completa (máximo 200 palabras)
+6. IMPORTANTE: Incluye emoticonos apropiados para hacer el feedback más divertido y motivador
+   Ejemplos: 💡 🤔 ✨ 📝 👀 ⚠️ 💪 🎯 ✅ 📐 🔍 💭 🌟"""
 
         messages = [
-            {"role": "system", "content": "Eres un tutor de matemáticas paciente y didáctico."},
+            {"role": "system", "content": "Eres un tutor de matemáticas paciente y didáctico. IMPORTANTE: Usa SIEMPRE la solución proporcionada como referencia única. No recalcules el problema. Usa emoticonos para hacer el feedback más amigable."},
             {"role": "user", "content": prompt}
         ]
 
-        return self._call_chat_completion(messages, temperature=0.7)
+        return self._call_chat_completion(messages, temperature=0.5)
 
     def generate_hint(self, exercise: str, context: str = None) -> str:
         """Generate a hint using OpenAI"""
@@ -203,10 +224,12 @@ La pista debe:
 - Orientar sin revelar la solución completa
 - Sugerir el primer paso o concepto clave
 - Ser breve (máximo 50 palabras)
-- Motivar al estudiante a pensar por sí mismo"""
+- Motivar al estudiante a pensar por sí mismo
+- IMPORTANTE: Incluye emoticonos apropiados para hacer la pista más divertida y motivadora
+  Ejemplos: 💡 🤔 🎯 👀 ✨ 🔍 💭 🌟 📝 🚀"""
 
         messages = [
-            {"role": "system", "content": "Eres un tutor de matemáticas que da pistas útiles sin revelar la solución."},
+            {"role": "system", "content": "Eres un tutor de matemáticas que da pistas útiles sin revelar la solución. Usa emoticonos para hacer las pistas más amigables."},
             {"role": "user", "content": prompt}
         ]
 
@@ -320,11 +343,13 @@ El resumen debe:
 - Tener una longitud apropiada (800-1200 palabras)
 - Incluir ejemplos prácticos y visuales cuando sea posible
 - Estar basado en el contenido del libro proporcionado
+- IMPORTANTE: Incluye emoticonos apropiados para hacer el resumen más visual y atractivo
+  Ejemplos: 📐 📊 🔢 ➕ ➖ ✖️ ➗ 💡 🎯 ⭐ ✨ 📝 🔍 💭 📈 📉 ⚖️ 🎲 🌟 💪 ✅
 
 Formato del resumen: Markdown con secciones bien diferenciadas."""
 
         messages = [
-            {"role": "system", "content": "Eres un profesor de matemáticas experto en crear materiales de estudio didácticos y completos."},
+            {"role": "system", "content": "Eres un profesor de matemáticas experto en crear materiales de estudio didácticos y completos. Usa emoticonos para hacer el contenido más visual y atractivo."},
             {"role": "user", "content": prompt}
         ]
 

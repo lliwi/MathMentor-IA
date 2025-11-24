@@ -60,13 +60,14 @@ class AIEngine(ABC):
         pass
 
     @abstractmethod
-    def generate_feedback(self, exercise: str, student_answer: str, student_methodology: str,
-                         errors: list, context: str = None) -> str:
+    def generate_feedback(self, exercise: str, expected_solution: str, student_answer: str,
+                         student_methodology: str, errors: list, context: str = None) -> str:
         """
         Generate detailed didactic feedback for student
 
         Args:
             exercise: The exercise content
+            expected_solution: The correct solution (reference)
             student_answer: Student's answer
             student_methodology: Student's work
             errors: List of identified errors

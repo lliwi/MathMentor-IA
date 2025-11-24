@@ -84,10 +84,12 @@ JSON esperado:
 Requisitos:
 - 4-6 procedimientos (algunos correctos, otros no)
 - Descripciones de 1 línea máximo
-- Sin texto adicional fuera del JSON"""
+- Sin texto adicional fuera del JSON
+- IMPORTANTE: Usa emoticonos apropiados para hacer el ejercicio más divertido y motivador
+  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲"""
 
         messages = [
-            {"role": "system", "content": "Eres un profesor de matemáticas experto."},
+            {"role": "system", "content": "Eres un profesor de matemáticas experto. Usa emoticonos para hacer el contenido más visual y atractivo."},
             {"role": "user", "content": prompt}
         ]
 
@@ -106,20 +108,30 @@ Requisitos:
 
     def evaluate_submission(self, exercise: str, expected_solution: str, expected_methodology: str,
                           student_answer: str, student_methodology: str) -> Dict[str, Any]:
-        """Evaluate submission - same logic as OpenAI"""
-        # Implementation similar to OpenAI
-        prompt = f"""Evalúa la solución de un estudiante. EJERCICIO: {exercise}
-SOLUCIÓN ESPERADA: {expected_solution}
+        """Evaluate submission with coherent reference"""
+        prompt = f"""Evalúa la solución de un estudiante.
+
+EJERCICIO: {exercise}
+
+SOLUCIÓN CORRECTA (REFERENCIA ÚNICA): {expected_solution}
+
 RESPUESTA ESTUDIANTE: {student_answer}
+
+INSTRUCCIONES CRÍTICAS:
+- La "SOLUCIÓN CORRECTA" es LA ÚNICA respuesta válida
+- NO recalcules el problema
+- Compara la respuesta del estudiante con esta solución EXACTAMENTE
+- IMPORTANTE: Usa emoticonos apropiados para hacer el feedback más amigable y motivador
+  Ejemplos: ✅ ❌ 👍 💪 🎯 ⭐ 🤔 💡 📝 ✨ 🚀
 
 Responde en JSON: {{"is_correct_result": bool, "is_correct_methodology": bool, "errors_found": [], "feedback": ""}}"""
 
         messages = [
-            {"role": "system", "content": "Eres un profesor evaluador."},
+            {"role": "system", "content": "Eres un profesor evaluador. IMPORTANTE: Usa SIEMPRE la solución proporcionada como referencia única. Usa emoticonos para hacer el feedback más amigable."},
             {"role": "user", "content": prompt}
         ]
 
-        response = self._call_chat_completion(messages, temperature=0.3)
+        response = self._call_chat_completion(messages, temperature=0.2)
 
         try:
             if '```json' in response:
@@ -133,25 +145,47 @@ Responde en JSON: {{"is_correct_result": bool, "is_correct_methodology": bool, "
                 'feedback': response
             }
 
-    def generate_feedback(self, exercise: str, student_answer: str, student_methodology: str,
-                         errors: list, context: str = None) -> str:
-        """Generate feedback"""
-        prompt = f"""Genera retroalimentación didáctica para: EJERCICIO: {exercise}
-RESPUESTA: {student_answer}
-ERRORES: {', '.join(errors)}"""
+    def generate_feedback(self, exercise: str, expected_solution: str, student_answer: str,
+                         student_methodology: str, errors: list, context: str = None) -> str:
+        """Generate feedback with coherent reference"""
+        prompt = f"""Genera retroalimentación didáctica.
+
+EJERCICIO: {exercise}
+
+SOLUCIÓN CORRECTA (REFERENCIA ÚNICA): {expected_solution}
+
+RESPUESTA ESTUDIANTE: {student_answer}
+
+ERRORES: {', '.join(errors)}
+
+INSTRUCCIONES:
+- Compara con la SOLUCIÓN CORRECTA únicamente
+- NO recalcules el problema
+- Explica los errores basándote en la diferencia con la solución correcta
+- IMPORTANTE: Usa emoticonos apropiados para hacer el feedback más amigable y motivador
+  Ejemplos: 💡 🤔 ✨ 📝 👀 ⚠️ 💪 🎯 ⭐ 🚀 ✅ 📚"""
 
         messages = [
-            {"role": "system", "content": "Eres un tutor paciente."},
+            {"role": "system", "content": "Eres un tutor paciente. IMPORTANTE: Usa la solución proporcionada como referencia única. Usa emoticonos para hacer el feedback más visual y motivador."},
             {"role": "user", "content": prompt}
         ]
 
-        return self._call_chat_completion(messages, temperature=0.7)
+        return self._call_chat_completion(messages, temperature=0.5)
 
     def generate_hint(self, exercise: str, context: str = None) -> str:
         """Generate hint"""
-        prompt = f"Genera una pista breve para: {exercise}"
+        prompt = f"""Genera una pista breve para ayudar a resolver este ejercicio sin dar la solución:
+
+EJERCICIO:
+{exercise}
+
+INSTRUCCIONES:
+- Proporciona una pista orientadora, no resuelvas el problema
+- Mantén la pista breve y concisa
+- IMPORTANTE: Usa emoticonos apropiados para hacer la pista más amigable y motivadora
+  Ejemplos: 💡 🤔 🎯 👀 ✨ 🔍 💭 🌟 📌 🔑"""
         messages = [
-            {"role": "system", "content": "Eres un tutor que da pistas."},
+            {"role": "system", "content": "Eres un tutor que da pistas útiles. Usa emoticonos para hacer las pistas más visuales y motivadoras."},
             {"role": "user", "content": prompt}
         ]
         return self._call_chat_completion(messages, temperature=0.7)
@@ -273,11 +307,13 @@ El resumen debe:
 - Tener una longitud apropiada (800-1200 palabras)
 - Incluir ejemplos prácticos y visuales cuando sea posible
 - Estar basado en el contenido del libro proporcionado
+- IMPORTANTE: Usa emoticonos apropiados para hacer el resumen más visual, amigable y motivador
+  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 📝 ✨ 🚀 📚 🔍 💭 ⚡ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲 ✅ ⚠️ 💪 👀 🌟 📌 🔑
 
 Formato del resumen: Markdown con secciones bien diferenciadas."""
 
         messages = [
-            {"role": "system", "content": "Eres un profesor de matemáticas experto en crear materiales de estudio didácticos y completos."},
+            {"role": "system", "content": "Eres un profesor de matemáticas experto en crear materiales de estudio didácticos y completos. Usa emoticonos para hacer el contenido más visual y atractivo."},
             {"role": "user", "content": prompt}
         ]
 

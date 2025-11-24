@@ -444,6 +444,7 @@ def submit_exercise():
         if not evaluation.get('is_correct_result', False) and evaluation.get('errors_found'):
             detailed_feedback = ai_engine.generate_feedback(
                 exercise=exercise.content,
+                expected_solution=exercise.solution,
                 student_answer=student_answer,
                 student_methodology=student_methodology,
                 errors=evaluation.get('errors_found', [])

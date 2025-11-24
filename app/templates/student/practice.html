@@ -130,6 +130,15 @@
                 </p>
             </div>
         </div>
+
+        <!-- Scientific Calculator Button -->
+        <div class="card mt-3">
+            <div class="card-body text-center">
+                <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#calculatorModal">
+                    <i class="bi bi-calculator"></i> Calculadora Científica
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -150,6 +159,84 @@
         </div>
     </div>
 </div>
+
+<!-- Calculator Modal -->
+<div class="modal fade" id="calculatorModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-calculator"></i> Calculadora Científica</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="calculator">
+                    <!-- Display -->
+                    <div class="calc-display mb-3">
+                        <input type="text" id="calc-input" class="form-control form-control-lg text-end" readonly value="0">
+                        <div id="calc-fraction" class="text-end text-muted small mt-1" style="min-height: 20px;"></div>
+                    </div>
+
+                    <!-- Format Toggle -->
+                    <div class="mb-3 text-center">
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="calc-format" id="format-decimal" checked>
+                            <label class="btn btn-outline-primary btn-sm" for="format-decimal">Decimal</label>
+
+                            <input type="radio" class="btn-check" name="calc-format" id="format-fraction">
+                            <label class="btn btn-outline-primary btn-sm" for="format-fraction">Fracción</label>
+                        </div>
+                    </div>
+
+                    <!-- Calculator Buttons -->
+                    <div class="calc-buttons">
+                        <div class="row g-2 mb-2">
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="sin">sin</button></div>
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="cos">cos</button></div>
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="tan">tan</button></div>
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="sqrt">√</button></div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="^">x^y</button></div>
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="(">(</button></div>
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value=")">)</button></div>
+                            <div class="col-3"><button class="btn btn-danger w-100 calc-btn" data-action="clear">C</button></div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="7">7</button></div>
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="8">8</button></div>
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="9">9</button></div>
+                            <div class="col-3"><button class="btn btn-warning w-100 calc-btn" data-value="/">÷</button></div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="4">4</button></div>
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="5">5</button></div>
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="6">6</button></div>
+                            <div class="col-3"><button class="btn btn-warning w-100 calc-btn" data-value="*">×</button></div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="1">1</button></div>
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="2">2</button></div>
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="3">3</button></div>
+                            <div class="col-3"><button class="btn btn-warning w-100 calc-btn" data-value="-">−</button></div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="0">0</button></div>
+                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value=".">.</button></div>
+                            <div class="col-3"><button class="btn btn-success w-100 calc-btn" data-action="equals">=</button></div>
+                            <div class="col-3"><button class="btn btn-warning w-100 calc-btn" data-value="+">+</button></div>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="pi">π</button></div>
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="e">e</button></div>
+                            <div class="col-3"><button class="btn btn-info w-100 calc-btn" data-action="backspace">←</button></div>
+                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="%">%</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -159,6 +246,8 @@
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <!-- Mermaid for diagram rendering -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Math.js for calculator with fraction support -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
 
 <script>
 // Configure marked to support line breaks
@@ -534,6 +623,128 @@ function newExercise() {
     document.getElementById('hint-btn').disabled = false;
     document.getElementById('hint-btn-text').textContent = 'Comprar Pista 1 (5 puntos)';
 }
+
+// ============ SCIENTIFIC CALCULATOR ============
+let calcExpression = '';
+let calcResult = null;
+let calcShowFraction = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculator button handlers
+    const calcButtons = document.querySelectorAll('.calc-btn');
+    const calcInput = document.getElementById('calc-input');
+    const calcFraction = document.getElementById('calc-fraction');
+
+    calcButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const value = this.dataset.value;
+            const action = this.dataset.action;
+
+            if (action === 'clear') {
+                calcExpression = '';
+                calcResult = null;
+                updateCalcDisplay();
+            } else if (action === 'backspace') {
+                calcExpression = calcExpression.slice(0, -1);
+                updateCalcDisplay();
+            } else if (action === 'equals') {
+                calculateResult();
+            } else if (value) {
+                // Add value to expression
+                if (calcExpression === '0' && value !== '.') {
+                    calcExpression = value;
+                } else {
+                    calcExpression += value;
+                }
+                updateCalcDisplay();
+            }
+        });
+    });
+
+    // Format toggle handlers
+    document.getElementById('format-decimal').addEventListener('change', function() {
+        if (this.checked) {
+            calcShowFraction = false;
+            updateCalcDisplay();
+        }
+    });
+
+    document.getElementById('format-fraction').addEventListener('change', function() {
+        if (this.checked) {
+            calcShowFraction = true;
+            updateCalcDisplay();
+        }
+    });
+
+    // Reset calculator when modal is opened
+    document.getElementById('calculatorModal').addEventListener('show.bs.modal', function() {
+        calcExpression = '';
+        calcResult = null;
+        calcShowFraction = false;
+        document.getElementById('format-decimal').checked = true;
+        updateCalcDisplay();
+    });
+
+    function updateCalcDisplay() {
+        const calcInput = document.getElementById('calc-input');
+        const calcFraction = document.getElementById('calc-fraction');
+
+        if (calcResult !== null) {
+            // Show result
+            if (calcShowFraction) {
+                try {
+                    const frac = math.fraction(calcResult);
+                    calcInput.value = `${frac.n}/${frac.d}`;
+                    calcFraction.textContent = `≈ ${parseFloat(calcResult.toPrecision(10))}`;
+                } catch (e) {
+                    calcInput.value = parseFloat(calcResult.toPrecision(10));
+                    calcFraction.textContent = '';
+                }
+            } else {
+                calcInput.value = parseFloat(calcResult.toPrecision(10));
+                // Show fraction equivalent
+                try {
+                    const frac = math.fraction(calcResult);
+                    if (frac.d !== 1 && frac.d < 1000) {
+                        calcFraction.textContent = `= ${frac.n}/${frac.d}`;
+                    } else {
+                        calcFraction.textContent = '';
+                    }
+                } catch (e) {
+                    calcFraction.textContent = '';
+                }
+            }
+        } else {
+            // Show expression
+            calcInput.value = calcExpression || '0';
+            calcFraction.textContent = '';
+        }
+    }
+
+    function calculateResult() {
+        if (!calcExpression) return;
+
+        try {
+            // Replace common symbols
+            let expr = calcExpression
+                .replace(/×/g, '*')
+                .replace(/÷/g, '/')
+                .replace(/−/g, '-')
+                .replace(/π/g, 'pi')
+                .replace(/sqrt/g, 'sqrt');
+
+            // Evaluate expression using math.js
+            calcResult = math.evaluate(expr);
+            calcExpression = '';
+            updateCalcDisplay();
+        } catch (error) {
+            alert('Error en la expresión: ' + error.message);
+            calcExpression = '';
+            calcResult = null;
+            updateCalcDisplay();
+        }
+    }
+});
 
 // Summary purchase functionality
 document.addEventListener('DOMContentLoaded', function() {
