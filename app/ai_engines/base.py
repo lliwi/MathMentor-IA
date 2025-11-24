@@ -119,3 +119,17 @@ class AIEngine(ABC):
             Formatted summary string with key concepts, formulas, and examples
         """
         pass
+
+    @abstractmethod
+    def generate_visual_scheme(self, exercise: str, context: str = None) -> str:
+        """
+        Generate a visual scheme/diagram for the exercise using Mermaid syntax
+
+        Args:
+            exercise: The exercise content
+            context: Optional context from RAG
+
+        Returns:
+            Mermaid diagram code string
+        """
+        pass

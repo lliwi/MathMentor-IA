@@ -498,7 +498,7 @@ def scoreboard():
 @student_bp.route('/buy-hint', methods=['POST'])
 @student_required
 def buy_hint():
-    """Purchase a hint using points"""
+    """Purchase a hint using points - progressive hints system"""
     try:
         data = request.json
         exercise_id = data.get('exercise_id')
@@ -509,6 +509,21 @@ def buy_hint():
             return jsonify({
                 'success': False,
                 'message': 'Ejercicio no encontrado'
+            })
+
+        # Track hints purchased per exercise in session
+        if 'hints_purchased' not in session:
+            session['hints_purchased'] = {}
+
+        hints_purchased = session['hints_purchased']
+        exercise_key = str(exercise_id)
+        hint_count = hints_purchased.get(exercise_key, 0)
+
+        # Check if already purchased 2 hints for this exercise
+        if hint_count >= 2:
+            return jsonify({
+                'success': False,
+                'message': 'Ya has comprado todas las pistas disponibles para este ejercicio'
             })
 
         # Purchase hint
@@ -527,11 +542,30 @@ def buy_hint():
         rag_service = RAGService()
         context = rag_service.get_context_for_topic(exercise.topic_id, top_k=2)
 
-        hint = ai_engine.generate_hint(exercise.content, context)
+        # First hint: textual hint
+        # Second hint: visual scheme
+        if hint_count == 0:
+            # First hint - textual
+            hint = ai_engine.generate_hint(exercise.content, context)
+            hint_type = 'text'
+            hint_level = 1
+        else:
+            # Second hint - visual scheme
+            hint = ai_engine.generate_visual_scheme(exercise.content, context)
+            hint_type = 'visual'
+            hint_level = 2
+
+        # Update hints purchased count
+        hints_purchased[exercise_key] = hint_count + 1
+        session['hints_purchased'] = hints_purchased
+        session.modified = True
 
         return jsonify({
             'success': True,
             'hint': hint,
+            'hint_type': hint_type,
+            'hint_level': hint_level,
+            'hints_remaining': 2 - (hint_count + 1),
             'message': message
         })
 

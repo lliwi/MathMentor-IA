@@ -65,13 +65,13 @@
                         <i class="bi bi-check-circle"></i> Enviar Respuesta
                     </button>
                     <button class="btn btn-warning" id="hint-btn">
-                        <i class="bi bi-lightbulb"></i> Comprar Pista (5 puntos)
+                        <i class="bi bi-lightbulb"></i> <span id="hint-btn-text">Comprar Pista 1 (5 puntos)</span>
                     </button>
                 </div>
 
                 <div id="hint-display" class="alert alert-warning mt-3 d-none">
-                    <h6><i class="bi bi-lightbulb-fill"></i> Pista:</h6>
-                    <p id="hint-text"></p>
+                    <h6><i class="bi bi-lightbulb-fill"></i> <span id="hint-title">Pista:</span></h6>
+                    <div id="hint-content"></div>
                 </div>
             </div>
 
@@ -155,9 +155,10 @@
 {% block extra_js %}
 <!-- Marked.js for Markdown rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<!-- MathJax for LaTeX rendering -->
-<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<!-- MathJax for LaTeX rendering (MathJax 3 no necesita polyfill.io) -->
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<!-- Mermaid for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
 <script>
 // Configure marked to support line breaks
@@ -166,9 +167,17 @@ marked.setOptions({
     gfm: true
 });
 
+// Initialize Mermaid
+mermaid.initialize({
+    startOnLoad: false,
+    theme: 'default',
+    securityLevel: 'loose'
+});
+
 let currentExerciseId = null;
 let currentProcedures = [];
 let hasRetried = false;
+let hintsPurchased = 0;
 
 document.getElementById('generate-btn').addEventListener('click', generateExercise);
 document.getElementById('submit-btn').addEventListener('click', submitExercise);
@@ -194,6 +203,11 @@ function generateExercise() {
             currentExerciseId = data.exercise.id;
             currentProcedures = data.exercise.available_procedures || [];
             hasRetried = false;  // Reset retry flag for new exercise
+            hintsPurchased = 0;  // Reset hints counter for new exercise
+
+            // Reset hint button state
+            document.getElementById('hint-btn').disabled = false;
+            document.getElementById('hint-btn-text').textContent = 'Comprar Pista 1 (5 puntos)';
 
             // Render markdown content to HTML
             const exerciseHTML = marked.parse(data.exercise.content);
@@ -412,7 +426,14 @@ function updateProgress(evaluation) {
 function buyHint() {
     if (!currentExerciseId) return;
 
-    if (!confirm('¿Comprar una pista por 5 puntos?')) return;
+    const hintLevel = hintsPurchased + 1;
+    const hintTypeName = hintLevel === 1 ? 'textual' : 'esquema visual';
+
+    if (!confirm(`¿Comprar pista ${hintLevel} (${hintTypeName}) por 5 puntos?`)) return;
+
+    const btn = document.getElementById('hint-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generando...';
 
     fetch('{{ url_for("student.buy_hint") }}', {
         method: 'POST',
@@ -424,12 +445,68 @@ function buyHint() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            document.getElementById('hint-text').textContent = data.hint;
+            hintsPurchased = data.hint_level;
+
+            // Update hint display based on type
+            const hintContent = document.getElementById('hint-content');
+            const hintTitle = document.getElementById('hint-title');
+
+            if (data.hint_type === 'text') {
+                // Text hint - use textContent to avoid escaping issues
+                hintTitle.textContent = 'Pista 1 - Sugerencia:';
+                const p = document.createElement('p');
+                p.textContent = data.hint;
+                hintContent.innerHTML = '';
+                hintContent.appendChild(p);
+            } else if (data.hint_type === 'visual') {
+                // Visual scheme with Mermaid
+                hintTitle.textContent = 'Pista 2 - Esquema Visual:';
+                const mermaidId = 'mermaid-' + Date.now();
+                const mermaidDiv = document.createElement('div');
+                mermaidDiv.className = 'mermaid';
+                mermaidDiv.id = mermaidId;
+                mermaidDiv.textContent = data.hint;
+                hintContent.innerHTML = '';
+                hintContent.appendChild(mermaidDiv);
+
+                // Render Mermaid diagram
+                mermaid.run({ nodes: [mermaidDiv] }).catch(err => {
+                    console.error('Mermaid error:', err);
+                    hintContent.innerHTML = '<p class="text-danger">Error al renderizar el diagrama. Código Mermaid:</p>';
+                    const pre = document.createElement('pre');
+                    pre.textContent = data.hint;
+                    hintContent.appendChild(pre);
+                });
+            }
+
             document.getElementById('hint-display').classList.remove('d-none');
-            alert(data.message);
+
+            // Update button state - fix order to avoid null reference
+            if (data.hints_remaining > 0) {
+                // First update innerHTML, then enable
+                btn.innerHTML = '<i class="bi bi-lightbulb"></i> <span id="hint-btn-text">Comprar Pista ' + (hintsPurchased + 1) + ' (5 puntos)</span>';
+                btn.disabled = false;
+            } else {
+                btn.innerHTML = '<i class="bi bi-lightbulb"></i> Todas las pistas compradas';
+                btn.disabled = true;
+            }
+
+            // Update points display
+            const stats = {{ stats|tojson }};
+            if (stats) {
+                document.getElementById('points-display').textContent = stats.available_points - (hintsPurchased * 5);
+            }
         } else {
             alert(data.message);
+            btn.innerHTML = '<i class="bi bi-lightbulb"></i> <span id="hint-btn-text">Comprar Pista ' + (hintsPurchased + 1) + ' (5 puntos)</span>';
+            btn.disabled = false;
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al comprar pista');
+        btn.innerHTML = '<i class="bi bi-lightbulb"></i> <span id="hint-btn-text">Comprar Pista ' + (hintsPurchased + 1) + ' (5 puntos)</span>';
+        btn.disabled = false;
     });
 }
 
@@ -447,9 +524,15 @@ function retryExercise() {
 
 function newExercise() {
     hasRetried = false;  // Reset retry flag
+    hintsPurchased = 0;  // Reset hints counter
     document.getElementById('exercise-display').classList.add('d-none');
     document.getElementById('feedback-display').classList.add('d-none');
+    document.getElementById('hint-display').classList.add('d-none');
     document.getElementById('no-exercise').classList.remove('d-none');
+
+    // Reset hint button
+    document.getElementById('hint-btn').disabled = false;
+    document.getElementById('hint-btn-text').textContent = 'Comprar Pista 1 (5 puntos)';
 }
 
 // Summary purchase functionality

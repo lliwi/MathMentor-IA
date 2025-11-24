@@ -282,3 +282,52 @@ Formato del resumen: Markdown con secciones bien diferenciadas."""
         ]
 
         return self._call_chat_completion(messages, temperature=0.7)
+
+    def generate_visual_scheme(self, exercise: str, context: str = None) -> str:
+        """Generate a visual scheme using Mermaid diagram syntax"""
+
+        prompt = f"""Genera un esquema visual usando sintaxis Mermaid para ayudar a resolver este ejercicio de matemáticas:
+
+EJERCICIO:
+{exercise}
+
+Crea un diagrama Mermaid que:
+- Represente visualmente la estructura del problema
+- Muestre las relaciones entre los datos conocidos y desconocidos
+- Sugiera el flujo lógico de resolución SIN resolverlo
+- Use el tipo de diagrama más apropiado (flowchart, graph, etc.)
+
+REGLAS IMPORTANTES:
+- NO incluyas cálculos específicos ni resultados numéricos
+- NO resuelvas el problema, solo muestra el camino
+- Usa placeholders genéricos como "Calcular X", "Aplicar fórmula Y"
+- El estudiante debe poder usar el diagrama para pensar por sí mismo
+- Mantén el diagrama orientativo, no resolutivo
+
+FORMATO:
+- Devuelve SOLO el código Mermaid, sin explicaciones adicionales
+- No incluyas bloques de código markdown (```mermaid)
+- Empieza directamente con el tipo de diagrama (ej: graph TD, flowchart LR, etc.)
+- Usa etiquetas claras y concisas en español
+
+Ejemplo de formato esperado:
+graph TD
+    A[Datos del problema] --> B[Identificar qué se busca]
+    B --> C[Aplicar concepto clave]
+    C --> D[Realizar operaciones]
+    D --> E[Verificar resultado]"""
+
+        messages = [
+            {"role": "system", "content": "Eres un experto en visualización de problemas matemáticos que crea diagramas Mermaid claros y didácticos."},
+            {"role": "user", "content": prompt}
+        ]
+
+        response = self._call_chat_completion(messages, temperature=0.5)
+
+        # Clean up response - remove markdown code blocks if present
+        if '```mermaid' in response:
+            response = response.split('```mermaid')[1].split('```')[0].strip()
+        elif '```' in response:
+            response = response.split('```')[1].split('```')[0].strip()
+
+        return response.strip()
