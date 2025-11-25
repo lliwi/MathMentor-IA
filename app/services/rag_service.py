@@ -12,6 +12,7 @@ from sqlalchemy import text
 from cachetools import LRUCache
 from app import db
 from app.models.document_embedding import DocumentEmbedding
+from app.models.video_embedding import VideoEmbedding
 from app.models.book import Book
 from app.models.topic import Topic
 from app.services.cache_service import cache_service
@@ -128,15 +129,60 @@ class RAGService:
 
         return stored_count
 
-    def retrieve_context(self, query: str, book_id: int = None, topic_id: int = None,
-                        top_k: int = 3) -> List[Tuple[str, float]]:
+    def store_video_chunks(self, channel_id: int, video_id: str, chunks: List[Dict[str, any]],
+                          batch_size: int = 32) -> int:
         """
-        Retrieve most relevant chunks for a query
+        Generate embeddings and store video transcript chunks in database
+
+        Args:
+            channel_id: ID of the YouTube channel
+            video_id: YouTube video ID
+            chunks: List of chunk dicts from YouTubeService
+            batch_size: Number of embeddings to generate at once (default: 32)
+
+        Returns:
+            Number of chunks stored
+        """
+        stored_count = 0
+
+        # Process chunks in batches for better performance
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i:i+batch_size]
+            texts = [chunk['text'] for chunk in batch]
+
+            # Batch encoding
+            print(f"[RAGService] Processing video batch {i//batch_size + 1}/{(len(chunks)-1)//batch_size + 1} ({len(batch)} chunks)")
+            embeddings = self.model.encode(texts, batch_size=batch_size, show_progress_bar=False)
+
+            # Store in database
+            for chunk, embedding in zip(batch, embeddings):
+                video_embedding = VideoEmbedding(
+                    channel_id=channel_id,
+                    video_id=video_id,
+                    chunk_text=chunk['text'],
+                    chunk_index=chunk['chunk_index'],
+                    timestamp=chunk['timestamp'],
+                    embedding=embedding.tolist()
+                )
+                db.session.add(video_embedding)
+                stored_count += 1
+
+            # Commit each batch to avoid memory issues
+            db.session.commit()
+            print(f"[RAGService] Video batch committed ({stored_count} chunks processed)")
+
+        return stored_count
+
+    def retrieve_context(self, query: str, book_id: int = None, video_id: str = None,
+                        topic_id: int = None, top_k: int = 3) -> List[Tuple[str, float]]:
+        """
+        Retrieve most relevant chunks for a query from both PDFs and videos
 
         Args:
             query: Query text
             book_id: Optional filter by book ID
-            topic_id: Optional filter by topic (will get book_id from topic)
+            video_id: Optional filter by video ID
+            topic_id: Optional filter by topic (will get source from topic)
             top_k: Number of top results to return
 
         Returns:
@@ -148,24 +194,33 @@ class RAGService:
         embed_time = time.time() - start_embed
         print(f"[RAG-TIMING] Generate embedding: {embed_time:.3f}s")
 
-        # Build query
+        # Get source from topic if provided
         if topic_id:
             start_topic = time.time()
             topic = Topic.query.get(topic_id)
             if topic:
-                book_id = topic.book_id
+                if topic.source_type == 'pdf_book':
+                    book_id = topic.book_id
+                elif topic.source_type == 'youtube_video':
+                    # Get video_id from YouTubeVideo
+                    from app.models.youtube_video import YouTubeVideo
+                    video = YouTubeVideo.query.get(topic.video_id)
+                    if video:
+                        video_id = video.video_id
             topic_time = time.time() - start_topic
             print(f"[RAG-TIMING] Get topic from DB: {topic_time:.3f}s")
 
-        # Use pgvector's cosine similarity operator <=>
         # Convert embedding list to string format for pgvector
         start_convert = time.time()
         embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
         convert_time = time.time() - start_convert
         print(f"[RAG-TIMING] Convert embedding to string: {convert_time:.3f}s")
 
+        # Build unified query that searches both sources
+        start_sql = time.time()
+
         if book_id:
-            start_sql = time.time()
+            # Search only in book
             results = db.session.execute(
                 text("""
                     SELECT chunk_text, 1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
@@ -180,14 +235,36 @@ class RAGService:
                     'top_k': top_k
                 }
             ).fetchall()
-            sql_time = time.time() - start_sql
-            print(f"[RAG-TIMING] Vector similarity SQL query: {sql_time:.3f}s")
-        else:
+        elif video_id:
+            # Search only in video
             results = db.session.execute(
                 text("""
                     SELECT chunk_text, 1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
-                    FROM document_embeddings
+                    FROM video_embeddings
+                    WHERE video_id = :video_id
                     ORDER BY embedding <=> CAST(:query_embedding AS vector)
+                    LIMIT :top_k
+                """),
+                {
+                    'query_embedding': embedding_str,
+                    'video_id': video_id,
+                    'top_k': top_k
+                }
+            ).fetchall()
+        else:
+            # Search in both sources and unify by similarity
+            results = db.session.execute(
+                text("""
+                    SELECT chunk_text, similarity FROM (
+                        SELECT chunk_text,
+                               1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
+                        FROM document_embeddings
+                        UNION ALL
+                        SELECT chunk_text,
+                               1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
+                        FROM video_embeddings
+                    ) AS combined
+                    ORDER BY similarity DESC
                     LIMIT :top_k
                 """),
                 {
@@ -195,6 +272,9 @@ class RAGService:
                     'top_k': top_k
                 }
             ).fetchall()
+
+        sql_time = time.time() - start_sql
+        print(f"[RAG-TIMING] Vector similarity SQL query: {sql_time:.3f}s")
 
         return [(row[0], row[1]) for row in results]
 

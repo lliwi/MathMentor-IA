@@ -1,0 +1,118 @@
+{% extends "base/base.html" %}
+
+{% block title %}Añadir Canal YouTube - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2 class="mb-4"><i class="bi bi-youtube"></i> Añadir Canal de YouTube</h2>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.channel_url.label(class="form-label") }}
+                        {{ form.channel_url(class="form-control") }}
+                        <small class="text-muted">Ejemplo: https://www.youtube.com/@nombrecanal</small>
+                        {% if form.channel_url.errors %}
+                            <div class="text-danger">
+                                {% for error in form.channel_url.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.course.label(class="form-label") }}
+                        {{ form.course(class="form-control") }}
+                        {% if form.course.errors %}
+                            <div class="text-danger">
+                                {% for error in form.course.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.subject.label(class="form-label") }}
+                        {{ form.subject(class="form-control") }}
+                        {% if form.subject.errors %}
+                            <div class="text-danger">
+                                {% for error in form.subject.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.video_selection.label(class="form-label") }}
+                        <div>
+                            {% for subfield in form.video_selection %}
+                                <div class="form-check">
+                                    {{ subfield(class="form-check-input") }}
+                                    {{ subfield.label(class="form-check-label") }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="video-limit-container">
+                        {{ form.video_limit.label(class="form-label") }}
+                        {{ form.video_limit(class="form-control", style="max-width: 200px;") }}
+                        <small class="text-muted">Solo se procesarán los últimos X videos del canal</small>
+                        {% if form.video_limit.errors %}
+                            <div class="text-danger">
+                                {% for error in form.video_limit.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-danger btn-lg") }}
+                        <a href="{{ url_for('admin.content') }}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-4">
+            <h5><i class="bi bi-info-circle"></i> Proceso de importación:</h5>
+            <ol>
+                <li>Se extraerá la información del canal de YouTube</li>
+                <li>Se obtendrán los videos del canal (todos o últimos X)</li>
+                <li>Se descargarán las transcripciones disponibles</li>
+                <li>Se generarán embeddings para búsqueda semántica (RAG)</li>
+                <li>Cada video se creará como un tema independiente</li>
+            </ol>
+            <p class="mb-0"><strong>Nota:</strong> Los videos sin transcripción disponible serán omitidos automáticamente.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle video limit field visibility
+    document.addEventListener('DOMContentLoaded', function() {
+        const videoLimitContainer = document.getElementById('video-limit-container');
+        const radioButtons = document.querySelectorAll('input[name="video_selection"]');
+
+        function toggleVideoLimit() {
+            const limitSelected = document.querySelector('input[name="video_selection"]:checked').value === 'limit';
+            videoLimitContainer.style.display = limitSelected ? 'block' : 'none';
+        }
+
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', toggleVideoLimit);
+        });
+
+        // Initial state
+        toggleVideoLimit();
+    });
+</script>
+{% endblock %}

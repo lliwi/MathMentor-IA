@@ -8,15 +8,18 @@ from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from functools import wraps
 from app.admin import admin_bp
-from app.admin.forms import UploadBookForm, EditBookForm, CreateStudentForm, EditStudentForm
+from app.admin.forms import UploadBookForm, EditBookForm, CreateStudentForm, EditStudentForm, AddYouTubeChannelForm
 from app import db
 from app.models.book import Book
 from app.models.topic import Topic
 from app.models.user import User
 from app.models.student_profile import StudentProfile
+from app.models.youtube_channel import YouTubeChannel
+from app.models.youtube_video import YouTubeVideo
 from app.services.pdf_processor import PDFProcessor
 from app.services.rag_service import RAGService
 from app.services.analytics_service import AnalyticsService
+from app.services.youtube_service import YouTubeService
 from app.ai_engines.factory import AIEngineFactory
 from flask import Response
 
@@ -38,11 +41,13 @@ def admin_required(f):
 def dashboard():
     """Admin dashboard"""
     books_count = Book.query.count()
+    channels_count = YouTubeChannel.query.count()
     students_count = User.query.filter_by(role='student').count()
     topics_count = Topic.query.count()
 
     return render_template('admin/dashboard.html',
                          books_count=books_count,
+                         channels_count=channels_count,
                          students_count=students_count,
                          topics_count=topics_count)
 
@@ -214,6 +219,101 @@ def delete_book(book_id):
     return redirect(url_for('admin.books'))
 
 
+@admin_bp.route('/content')
+@admin_required
+def content():
+    """Unified content management - PDFs and YouTube channels"""
+    all_books = Book.query.order_by(Book.uploaded_at.desc()).all()
+    all_channels = YouTubeChannel.query.order_by(YouTubeChannel.uploaded_at.desc()).all()
+
+    return render_template('admin/content.html',
+                         books=all_books,
+                         channels=all_channels)
+
+
+@admin_bp.route('/content/upload-youtube', methods=['GET', 'POST'])
+@admin_required
+def upload_youtube():
+    """Add a new YouTube channel"""
+    form = AddYouTubeChannelForm()
+
+    if form.validate_on_submit():
+        try:
+            # Extract channel information
+            channel_info = YouTubeService.extract_channel_info(form.channel_url.data)
+
+            # Check if channel already exists
+            existing_channel = YouTubeChannel.query.filter_by(
+                channel_id=channel_info['channel_id']
+            ).first()
+
+            if existing_channel:
+                flash(f'El canal "{channel_info["channel_name"]}" ya está agregado', 'warning')
+                return redirect(url_for('admin.content'))
+
+            # Determine video limit
+            video_limit = None
+            if form.video_selection.data == 'limit':
+                video_limit = form.video_limit.data
+                if not video_limit or video_limit <= 0:
+                    flash('Debe especificar un número válido de videos', 'error')
+                    return render_template('admin/upload_youtube.html', form=form)
+
+            # Create channel record
+            channel = YouTubeChannel(
+                channel_url=form.channel_url.data,
+                channel_id=channel_info['channel_id'],
+                channel_name=channel_info['channel_name'],
+                description=channel_info.get('description', ''),
+                course=form.course.data,
+                subject=form.subject.data,
+                processed=False
+            )
+            db.session.add(channel)
+            db.session.commit()
+
+            flash(f'Canal "{channel.channel_name}" agregado exitosamente. Procesando videos...', 'success')
+
+            # Process channel videos
+            try:
+                stats = YouTubeService.process_youtube_channel(channel.id, video_limit=video_limit)
+
+                flash(f'Canal procesado: {stats["videos_processed"]} videos procesados, '
+                      f'{stats["videos_skipped"]} sin transcripción, '
+                      f'{stats["topics_created"]} temas creados', 'success')
+
+            except Exception as e:
+                flash(f'Error al procesar el canal: {str(e)}', 'warning')
+
+            return redirect(url_for('admin.content'))
+
+        except Exception as e:
+            flash(f'Error al agregar el canal: {str(e)}', 'error')
+            db.session.rollback()
+
+    return render_template('admin/upload_youtube.html', form=form)
+
+
+@admin_bp.route('/content/youtube/<int:channel_id>/delete', methods=['POST'])
+@admin_required
+def delete_youtube_channel(channel_id):
+    """Delete a YouTube channel and all related data"""
+    try:
+        channel = YouTubeChannel.query.get_or_404(channel_id)
+        channel_name = channel.channel_name
+
+        # Delete channel from database (cascade will handle videos, topics, embeddings)
+        db.session.delete(channel)
+        db.session.commit()
+
+        flash(f'Canal "{channel_name}" eliminado correctamente', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar el canal: {str(e)}', 'error')
+
+    return redirect(url_for('admin.content'))
+
+
 @admin_bp.route('/ai-config')
 @admin_required
 def ai_config():
@@ -252,12 +352,14 @@ def assign_topics(student_id):
         flash(f'Temas asignados correctamente a {student.username}', 'success')
         return redirect(url_for('admin.students'))
 
-    # Get all topics grouped by book
+    # Get all topics grouped by source (books and YouTube channels)
     books = Book.query.filter_by(processed=True).all()
+    channels = YouTubeChannel.query.filter_by(processed=True).all()
 
     return render_template('admin/assign_topics.html',
                          student=student,
-                         books=books)
+                         books=books,
+                         channels=channels)
 
 
 @admin_bp.route('/students/create', methods=['GET', 'POST'])

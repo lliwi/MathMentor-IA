@@ -20,39 +20,81 @@
                     <div class="mb-3">
                         <label class="form-label">Temas Asignados</label>
 
-                        {% if books %}
-                            {% for book in books %}
-                            <div class="card mb-2">
-                                <div class="card-header">
-                                    <strong>{{ book.title }}</strong> - {{ book.course }}
-                                </div>
-                                <div class="card-body">
-                                    {% if book.topics.count() > 0 %}
-                                    <div class="form-check-group">
-                                        {% for topic in book.topics %}
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox"
-                                                   name="topics" value="{{ topic.id }}"
-                                                   id="topic_{{ topic.id }}"
-                                                   {% if student.student_profile and topic.id in student.student_profile.get_topics() %}checked{% endif %}>
-                                            <label class="form-check-label" for="topic_{{ topic.id }}">
-                                                {{ topic.topic_name }}
-                                                {% if topic.description %}
-                                                <small class="text-muted">- {{ topic.description[:100] }}</small>
-                                                {% endif %}
-                                            </label>
-                                        </div>
-                                        {% endfor %}
+                        {% if books or channels %}
+                            <!-- Books Section -->
+                            {% if books %}
+                                <h5 class="mt-3 mb-2"><i class="bi bi-book"></i> Libros PDF</h5>
+                                {% for book in books %}
+                                <div class="card mb-2">
+                                    <div class="card-header">
+                                        <strong>{{ book.title }}</strong> - {{ book.course }}
                                     </div>
-                                    {% else %}
-                                    <p class="text-muted mb-0">No hay temas disponibles para este libro.</p>
-                                    {% endif %}
+                                    <div class="card-body">
+                                        {% if book.topics.count() > 0 %}
+                                        <div class="form-check-group">
+                                            {% for topic in book.topics %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="topics" value="{{ topic.id }}"
+                                                       id="topic_{{ topic.id }}"
+                                                       {% if student.student_profile and topic.id in student.student_profile.get_topics() %}checked{% endif %}>
+                                                <label class="form-check-label" for="topic_{{ topic.id }}">
+                                                    {{ topic.topic_name }}
+                                                    {% if topic.description %}
+                                                    <small class="text-muted">- {{ topic.description[:100] }}</small>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        <p class="text-muted mb-0">No hay temas disponibles para este libro.</p>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                            </div>
-                            {% endfor %}
+                                {% endfor %}
+                            {% endif %}
+
+                            <!-- YouTube Channels Section -->
+                            {% if channels %}
+                                <h5 class="mt-3 mb-2"><i class="bi bi-youtube"></i> Canales YouTube</h5>
+                                {% for channel in channels %}
+                                <div class="card mb-2">
+                                    <div class="card-header bg-danger text-white">
+                                        <strong><i class="bi bi-youtube"></i> {{ channel.channel_name }}</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        {% set channel_videos = channel.videos.all() %}
+                                        {% if channel_videos %}
+                                        <div class="form-check-group">
+                                            {% for video in channel_videos %}
+                                                {% set video_topics = video.topics.all() %}
+                                                {% for topic in video_topics %}
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           name="topics" value="{{ topic.id }}"
+                                                           id="topic_{{ topic.id }}"
+                                                           {% if student.student_profile and topic.id in student.student_profile.get_topics() %}checked{% endif %}>
+                                                    <label class="form-check-label" for="topic_{{ topic.id }}">
+                                                        <i class="bi bi-camera-video"></i> {{ topic.topic_name }}
+                                                        {% if topic.description %}
+                                                        <small class="text-muted">- {{ topic.description[:100] }}</small>
+                                                        {% endif %}
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        <p class="text-muted mb-0">No hay videos disponibles para este canal.</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
                         {% else %}
                             <div class="alert alert-warning">
-                                No hay libros procesados disponibles. Por favor, sube y procesa libros primero.
+                                No hay contenido procesado disponible. Por favor, sube libros PDF o añade canales de YouTube primero.
                             </div>
                         {% endif %}
                     </div>

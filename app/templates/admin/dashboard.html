@@ -9,13 +9,48 @@
     </div>
 </div>
 
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-primary">{{ books_count }}</h3>
+                <p class="text-muted mb-0"><i class="bi bi-book"></i> Libros PDF</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-danger">{{ channels_count }}</h3>
+                <p class="text-muted mb-0"><i class="bi bi-youtube"></i> Canales YouTube</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-success">{{ students_count }}</h3>
+                <p class="text-muted mb-0"><i class="bi bi-people"></i> Estudiantes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-info">{{ topics_count }}</h3>
+                <p class="text-muted mb-0"><i class="bi bi-list-task"></i> Temas</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-md-4">
         <div class="card text-white bg-primary">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-book"></i> Gestionar Libros</h5>
-                <p class="card-text">Subir y administrar libros de texto en PDF</p>
-                <a href="{{ url_for('admin.books') }}" class="btn btn-light">Ir a Libros</a>
+                <h5 class="card-title"><i class="bi bi-folder"></i> Gestionar Contenido</h5>
+                <p class="card-text">Subir libros PDF y añadir canales de YouTube</p>
+                <a href="{{ url_for('admin.content') }}" class="btn btn-light">Ir a Contenido</a>
             </div>
         </div>
     </div>

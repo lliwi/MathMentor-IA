@@ -3,8 +3,8 @@ Admin forms
 """
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
-from wtforms import StringField, SelectField, TextAreaField, SubmitField, PasswordField
-from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional
+from wtforms import StringField, SelectField, TextAreaField, SubmitField, PasswordField, RadioField, IntegerField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, URL, NumberRange
 
 
 class UploadBookForm(FlaskForm):
@@ -91,3 +91,30 @@ class EditStudentForm(FlaskForm):
     ])
 
     submit = SubmitField('Guardar Cambios')
+
+
+class AddYouTubeChannelForm(FlaskForm):
+    """Form for adding a YouTube channel"""
+    channel_url = StringField('URL del Canal de YouTube', validators=[
+        DataRequired(message='La URL del canal es requerida'),
+        URL(message='Debe ser una URL válida')
+    ], render_kw={"placeholder": "https://www.youtube.com/@nombrecanal"})
+
+    course = StringField('Curso', validators=[DataRequired()],
+                        render_kw={"placeholder": "Ej: 1º ESO, 2º Bachillerato"})
+
+    subject = StringField('Materia', validators=[Optional()],
+                         default="Matemáticas",
+                         render_kw={"placeholder": "Matemáticas"})
+
+    video_selection = RadioField('Selección de Videos',
+                                choices=[('all', 'Todos los videos del canal'),
+                                        ('limit', 'Últimos X videos')],
+                                default='all',
+                                validators=[DataRequired()])
+
+    video_limit = IntegerField('Número de Videos',
+                              validators=[Optional(), NumberRange(min=1, max=100)],
+                              render_kw={"placeholder": "Ej: 20"})
+
+    submit = SubmitField('Añadir Canal y Procesar')

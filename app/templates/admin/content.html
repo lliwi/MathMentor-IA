@@ -1,0 +1,154 @@
+{% extends "base/base.html" %}
+
+{% block title %}Gestionar Contenido - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="bi bi-folder"></i> Gestionar Contenido</h2>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{{ url_for('admin.upload_book') }}" class="btn btn-primary me-2">
+            <i class="bi bi-upload"></i> Subir PDF
+        </a>
+        <a href="{{ url_for('admin.upload_youtube') }}" class="btn btn-danger">
+            <i class="bi bi-youtube"></i> Añadir Canal YouTube
+        </a>
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs mb-4" id="contentTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="books-tab" data-bs-toggle="tab" data-bs-target="#books"
+                type="button" role="tab" aria-controls="books" aria-selected="true">
+            <i class="bi bi-book"></i> Libros PDF ({{ books|length }})
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="youtube-tab" data-bs-toggle="tab" data-bs-target="#youtube"
+                type="button" role="tab" aria-controls="youtube" aria-selected="false">
+            <i class="bi bi-youtube"></i> Canales YouTube ({{ channels|length }})
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="contentTabsContent">
+    <!-- Books Tab -->
+    <div class="tab-pane fade show active" id="books" role="tabpanel" aria-labelledby="books-tab">
+        {% if books %}
+        <div class="row">
+            {% for book in books %}
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ book.title }}</h5>
+                        <p class="card-text">
+                            <strong>Curso:</strong> {{ book.course }}<br>
+                            <strong>Materia:</strong> {{ book.subject }}<br>
+                            <strong>Subido:</strong> {{ book.uploaded_at.strftime('%d/%m/%Y %H:%M') }}<br>
+                            <strong>Estado:</strong>
+                            {% if book.processed %}
+                                <span class="badge bg-success">Procesado</span>
+                            {% else %}
+                                <span class="badge bg-warning">Pendiente</span>
+                            {% endif %}
+                        </p>
+
+                        {% if book.processed %}
+                        <p class="mb-0">
+                            <small class="text-muted">
+                                <i class="bi bi-list-task"></i> {{ book.topics.count() }} temas extraídos
+                            </small>
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer d-flex gap-2">
+                        <a href="{{ url_for('admin.edit_book', book_id=book.id) }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-pencil-square"></i> Editar
+                        </a>
+                        <form method="POST" action="{{ url_for('admin.delete_book', book_id=book.id) }}"
+                              onsubmit="return confirm('¿Estás seguro de que deseas eliminar este libro? Esta acción eliminará también todos los temas, ejercicios y embeddings relacionados.');"
+                              style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="bi bi-trash"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No hay libros PDF subidos aún.
+            <a href="{{ url_for('admin.upload_book') }}" class="alert-link">Sube el primer libro</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- YouTube Channels Tab -->
+    <div class="tab-pane fade" id="youtube" role="tabpanel" aria-labelledby="youtube-tab">
+        {% if channels %}
+        <div class="row">
+            {% for channel in channels %}
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-youtube text-danger"></i> {{ channel.channel_name }}
+                        </h5>
+                        <p class="card-text">
+                            <strong>Curso:</strong> {{ channel.course }}<br>
+                            <strong>Materia:</strong> {{ channel.subject }}<br>
+                            <strong>Canal ID:</strong> <code>{{ channel.channel_id }}</code><br>
+                            <strong>Añadido:</strong> {{ channel.uploaded_at.strftime('%d/%m/%Y %H:%M') }}<br>
+                            <strong>Estado:</strong>
+                            {% if channel.processed %}
+                                <span class="badge bg-success">Procesado</span>
+                            {% else %}
+                                <span class="badge bg-warning">Pendiente</span>
+                            {% endif %}
+                        </p>
+
+                        {% if channel.processed %}
+                        <p class="mb-0">
+                            <small class="text-muted">
+                                <i class="bi bi-camera-video"></i> {{ channel.video_count }} videos |
+                                <i class="bi bi-list-task"></i> {{ channel.videos.filter_by(transcript_available=True).count() }} con transcripción
+                            </small>
+                        </p>
+                        {% endif %}
+
+                        {% if channel.description %}
+                        <p class="mt-2 mb-0">
+                            <small class="text-muted">{{ channel.description[:150] }}{% if channel.description|length > 150 %}...{% endif %}</small>
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer d-flex gap-2">
+                        <a href="{{ channel.channel_url }}" target="_blank" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-box-arrow-up-right"></i> Ver Canal
+                        </a>
+                        <form method="POST" action="{{ url_for('admin.delete_youtube_channel', channel_id=channel.id) }}"
+                              onsubmit="return confirm('¿Estás seguro de que deseas eliminar este canal? Esta acción eliminará también todos los videos, temas y embeddings relacionados.');"
+                              style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="bi bi-trash"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No hay canales de YouTube añadidos aún.
+            <a href="{{ url_for('admin.upload_youtube') }}" class="alert-link">Añade el primer canal</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

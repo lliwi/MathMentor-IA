@@ -81,6 +81,9 @@ def _auto_initialize_database():
         from app.models.user import User
         from app.models.student_profile import StudentProfile
         from app.models.student_score import StudentScore
+        from app.models.youtube_channel import YouTubeChannel
+        from app.models.youtube_video import YouTubeVideo
+        from app.models.video_embedding import VideoEmbedding
         from app.services.rag_service import RAGService
         from sqlalchemy import inspect
 
