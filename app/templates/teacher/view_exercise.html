@@ -1,0 +1,338 @@
+{% extends "base/base.html" %}
+
+{% block title %}Ver Ejercicio - MathMentor IA{% endblock %}
+
+{% block extra_css %}
+<style>
+    .exercise-section {
+        background-color: var(--bs-light);
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    [data-theme="dark"] .exercise-section {
+        background-color: #2d3748;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-file-text"></i> Ejercicio #{{ exercise.id }}</h1>
+        <a href="{{ url_for('teacher.exercises') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <!-- Exercise Status -->
+    <div class="alert {% if exercise.status == 'validated' %}alert-success{% elif exercise.status == 'pending_validation' %}alert-warning{% else %}alert-info{% endif %}">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <strong>Estado:</strong>
+                {% if exercise.status == 'validated' %}
+                <i class="bi bi-check-circle"></i> Validado
+                {% elif exercise.status == 'pending_validation' %}
+                <i class="bi bi-clock-history"></i> Pendiente de validación
+                {% elif exercise.status == 'teacher_created' %}
+                <i class="bi bi-person"></i> Creado por profesor
+                {% else %}
+                <i class="bi bi-cpu"></i> Auto-generado
+                {% endif %}
+            </div>
+            <div class="col-md-6 text-end">
+                <strong>Usado {{ usage_count }} veces</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exercise Content -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-question-circle"></i> Contenido del Ejercicio</h5>
+                </div>
+                <div class="card-body">
+                    <div class="exercise-section" id="content-display">
+                        {{ exercise.content }}
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editField('content')">
+                        <i class="bi bi-pencil"></i> Editar
+                    </button>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-check2-square"></i> Solución</h5>
+                </div>
+                <div class="card-body">
+                    <div class="exercise-section" id="solution-display">
+                        {{ exercise.solution }}
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editField('solution')">
+                        <i class="bi bi-pencil"></i> Editar
+                    </button>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-list-check"></i> Metodología</h5>
+                </div>
+                <div class="card-body">
+                    <div class="exercise-section" id="methodology-display">
+                        {{ exercise.methodology or 'No especificada' }}
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editField('methodology')">
+                        <i class="bi bi-pencil"></i> Editar
+                    </button>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Procedimientos</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Procedimientos Disponibles:</h6>
+                    <div class="mb-3">
+                        {% if exercise.available_procedures %}
+                            <ul class="list-group">
+                                {% for proc in exercise.available_procedures %}
+                                <li class="list-group-item">
+                                    <strong>{{ proc.name }}</strong>
+                                    {% if proc.description %}- {{ proc.description }}{% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="text-muted">No hay procedimientos definidos</span>
+                        {% endif %}
+                    </div>
+
+                    <h6>Procedimientos Esperados (IDs):</h6>
+                    <div class="mb-3">
+                        {% if exercise.expected_procedures %}
+                            <span class="badge bg-primary">{{ exercise.expected_procedures|join(', ') }}</span>
+                        {% else %}
+                            <span class="text-muted">No hay procedimientos esperados definidos</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Notas de Modificación</h5>
+                </div>
+                <div class="card-body">
+                    <textarea class="form-control" id="modification-notes" rows="3" placeholder="Añade notas sobre las modificaciones realizadas...">{{ exercise.modification_notes or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Tema:</strong> {{ topic.topic_name }}</p>
+                    <p><strong>Dificultad:</strong>
+                        {% if exercise.difficulty == 'easy' %}
+                        <span class="badge bg-success">Fácil</span>
+                        {% elif exercise.difficulty == 'medium' %}
+                        <span class="badge bg-warning">Media</span>
+                        {% else %}
+                        <span class="badge bg-danger">Difícil</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Fecha de creación:</strong><br>{{ exercise.generated_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                    {% if exercise.validated_at %}
+                    <p><strong>Fecha de validación:</strong><br>{{ exercise.validated_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                    {% endif %}
+                    {% if exercise.created_by %}
+                    <p><strong>Creado/Modificado por:</strong><br>{{ exercise.created_by.username }}</p>
+                    {% endif %}
+                    {% if exercise.validated_by %}
+                    <p><strong>Validado por:</strong><br>{{ exercise.validated_by.username }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Acciones</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if exercise.status != 'validated' %}
+                        <button class="btn btn-success" onclick="validateExercise()">
+                            <i class="bi bi-check-circle"></i> Validar Ejercicio
+                        </button>
+                        {% endif %}
+
+                        <button class="btn btn-primary" onclick="saveChanges()">
+                            <i class="bi bi-save"></i> Guardar Cambios
+                        </button>
+
+                        {% if usage_count == 0 %}
+                        <button class="btn btn-danger" onclick="deleteExercise()">
+                            <i class="bi bi-trash"></i> Eliminar Ejercicio
+                        </button>
+                        {% else %}
+                        <button class="btn btn-secondary" disabled title="No se puede eliminar un ejercicio que ya ha sido usado">
+                            <i class="bi bi-trash"></i> Eliminar (No disponible)
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const exerciseId = {{ exercise.id }};
+
+function editField(field) {
+    const displayDiv = document.getElementById(`${field}-display`);
+    const currentValue = displayDiv.textContent.trim();
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'form-control';
+    textarea.rows = 5;
+    textarea.value = currentValue;
+    textarea.id = `${field}-edit`;
+
+    displayDiv.innerHTML = '';
+    displayDiv.appendChild(textarea);
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-sm btn-success mt-2 me-2';
+    saveBtn.innerHTML = '<i class="bi bi-check"></i> Guardar';
+    saveBtn.onclick = () => saveFieldEdit(field);
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-sm btn-secondary mt-2';
+    cancelBtn.innerHTML = '<i class="bi bi-x"></i> Cancelar';
+    cancelBtn.onclick = () => cancelFieldEdit(field, currentValue);
+
+    displayDiv.appendChild(saveBtn);
+    displayDiv.appendChild(cancelBtn);
+}
+
+function saveFieldEdit(field) {
+    const textarea = document.getElementById(`${field}-edit`);
+    const newValue = textarea.value;
+
+    const displayDiv = document.getElementById(`${field}-display`);
+    displayDiv.innerHTML = newValue;
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-sm btn-outline-primary mt-2';
+    editBtn.innerHTML = '<i class="bi bi-pencil"></i> Editar';
+    editBtn.onclick = () => editField(field);
+    displayDiv.appendChild(editBtn);
+}
+
+function cancelFieldEdit(field, originalValue) {
+    const displayDiv = document.getElementById(`${field}-display`);
+    displayDiv.innerHTML = originalValue;
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-sm btn-outline-primary mt-2';
+    editBtn.innerHTML = '<i class="bi bi-pencil"></i> Editar';
+    editBtn.onclick = () => editField(field);
+    displayDiv.appendChild(editBtn);
+}
+
+function saveChanges() {
+    const content = document.getElementById('content-display').textContent.trim();
+    const solution = document.getElementById('solution-display').textContent.trim();
+    const methodology = document.getElementById('methodology-display').textContent.trim();
+    const notes = document.getElementById('modification-notes').value;
+
+    fetch(`/teacher/exercise/${exerciseId}/edit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            content: content,
+            solution: solution,
+            methodology: methodology,
+            modification_notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Cambios guardados correctamente');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al guardar cambios');
+    });
+}
+
+function validateExercise() {
+    if (!confirm('¿Estás seguro de que quieres validar este ejercicio?')) {
+        return;
+    }
+
+    fetch(`/teacher/exercise/${exerciseId}/validate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Ejercicio validado correctamente');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al validar ejercicio');
+    });
+}
+
+function deleteExercise() {
+    if (!confirm('¿Estás seguro de que quieres eliminar este ejercicio? Esta acción no se puede deshacer.')) {
+        return;
+    }
+
+    fetch(`/teacher/exercise/${exerciseId}/delete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Ejercicio eliminado correctamente');
+            window.location.href = '/teacher/exercises';
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al eliminar ejercicio');
+    });
+}
+</script>
+{% endblock %}

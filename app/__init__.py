@@ -54,10 +54,12 @@ def create_app(config_name=None):
     from app.auth import auth_bp
     from app.admin import admin_bp
     from app.student import student_bp
+    from app.teacher import teacher_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(student_bp, url_prefix='/student')
+    app.register_blueprint(teacher_bp, url_prefix='/teacher')
 
     # Home route
     @app.route('/')
@@ -68,6 +70,8 @@ def create_app(config_name=None):
         if current_user.is_authenticated:
             if current_user.role == 'admin':
                 return redirect(url_for('admin.dashboard'))
+            elif current_user.role == 'teacher':
+                return redirect(url_for('teacher.dashboard'))
             else:
                 return redirect(url_for('student.dashboard'))
         return redirect(url_for('auth.login'))
@@ -106,7 +110,7 @@ def _auto_initialize_database():
             print("🗄️  Creating database tables...")
             db.create_all()
 
-            # Create admin user
+            # Create admin user (includes exercise management capabilities)
             print("👤 Creating admin user...")
             admin = User(
                 username='admin',
@@ -153,7 +157,7 @@ def _auto_initialize_database():
             print("✅ Database initialized successfully!")
             print("="*60)
             print("\n📋 Test users created:")
-            print("   Admin: username='admin', password='admin123'")
+            print("   Admin: username='admin', password='admin123' (includes exercise management)")
             print("   Students: username='maria/juan/lucia', password='estudiante123'")
             print("\n⚠️  IMPORTANT: Change these passwords in production!")
             print("="*60 + "\n")

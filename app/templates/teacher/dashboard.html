@@ -1,0 +1,222 @@
+{% extends "base/base.html" %}
+
+{% block title %}Dashboard Profesor - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">
+        <i class="bi bi-house-door"></i> Dashboard Profesor
+    </h1>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Total Ejercicios</h6>
+                            <h2 class="mb-0">{{ stats.total }}</h2>
+                        </div>
+                        <i class="bi bi-collection fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Validados</h6>
+                            <h2 class="mb-0">{{ stats.validated }}</h2>
+                        </div>
+                        <i class="bi bi-check-circle fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Pendientes</h6>
+                            <h2 class="mb-0">{{ stats.pending }}</h2>
+                        </div>
+                        <i class="bi bi-clock-history fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Auto-generados</h6>
+                            <h2 class="mb-0">{{ stats.auto_generated }}</h2>
+                        </div>
+                        <i class="bi bi-cpu fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{{ url_for('teacher.dashboard') }}" class="row g-3">
+                <div class="col-md-4">
+                    <label for="course" class="form-label">Curso</label>
+                    <select class="form-select" id="course" name="course">
+                        <option value="">Todos los cursos</option>
+                        {% for course in stats.all_courses %}
+                        <option value="{{ course }}" {% if course_filter == course %}selected{% endif %}>
+                            {{ course }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="source_type" class="form-label">Tipo de Fuente</label>
+                    <select class="form-select" id="source_type" name="source_type">
+                        <option value="">Todas las fuentes</option>
+                        <option value="pdf_book" {% if source_type_filter == 'pdf_book' %}selected{% endif %}>
+                            📚 Libros PDF
+                        </option>
+                        <option value="youtube_video" {% if source_type_filter == 'youtube_video' %}selected{% endif %}>
+                            🎥 Videos de YouTube
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics by Topic -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Ejercicios por Tema</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tema</th>
+                            <th>Fuente</th>
+                            <th>Curso</th>
+                            <th>Total Ejercicios</th>
+                            <th>Validados</th>
+                            <th>% Validados</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in stats.topic_stats %}
+                        <tr>
+                            <td><strong>{{ stat.topic.topic_name }}</strong></td>
+                            <td>
+                                {% if stat.source_type == 'pdf_book' %}
+                                    <span class="badge bg-info">📚 Libro</span><br>
+                                    <small>{{ stat.source_name }}</small>
+                                {% elif stat.source_type == 'youtube_video' %}
+                                    <span class="badge bg-danger">🎥 YouTube</span><br>
+                                    <small>{{ stat.source_name }}</small>
+                                {% else %}
+                                    <span class="text-muted">{{ stat.source_name }}</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-secondary">{{ stat.course }}</span></td>
+                            <td>{{ stat.total }}</td>
+                            <td>{{ stat.validated }}</td>
+                            <td>
+                                {% if stat.total > 0 %}
+                                    {% set percentage = (stat.validated / stat.total * 100) | int %}
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar {% if percentage >= 75 %}bg-success{% elif percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                             role="progressbar"
+                                             style="width: {{ percentage }}%"
+                                             aria-valuenow="{{ percentage }}"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100">
+                                            {{ percentage }}%
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('teacher.exercises', topic=stat.topic.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i> Ver ejercicios
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('teacher.generate_exercises') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-cpu"></i> Generar ejercicios con IA
+                        </a>
+                        <a href="{{ url_for('teacher.create_exercise') }}" class="btn btn-outline-success">
+                            <i class="bi bi-plus-circle"></i> Crear ejercicio manualmente
+                        </a>
+                        <a href="{{ url_for('teacher.exercises', status='pending_validation') }}" class="btn btn-outline-warning">
+                            <i class="bi bi-clock-history"></i> Revisar ejercicios pendientes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Gestión de Banco de Ejercicios</h6>
+                    <ul>
+                        <li>Los estudiantes reciben primero ejercicios <strong>validados</strong></li>
+                        <li>Si no hay ejercicios validados, se usan ejercicios <strong>pendientes</strong> o <strong>creados por profesores</strong></li>
+                        <li>Si no hay ejercicios disponibles, el sistema genera nuevos automáticamente</li>
+                        <li>Los ejercicios no se repiten para el mismo estudiante</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

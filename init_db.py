@@ -28,7 +28,7 @@ def init_database():
         print("Creating database tables...")
         db.create_all()
 
-        # Create admin user
+        # Create admin user (has access to all features including exercise management)
         admin = User.query.filter_by(username='admin').first()
         if not admin:
             print("Creating admin user...")
@@ -76,7 +76,7 @@ def init_database():
         db.session.commit()
         print("\nDatabase initialized successfully!")
         print("\nTest users created:")
-        print("Admin: username='admin', password='admin123'")
+        print("Admin: username='admin', password='admin123' (includes exercise management)")
         print("Students: username='maria/juan/lucia', password='estudiante123'")
         print("\nIMPORTANT: Change these passwords in production!")
 

@@ -23,7 +23,7 @@
                 <ul class="navbar-nav me-auto">
                     {% if current_user.role == 'admin' %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+                        <a class="nav-link" href="{{ url_for('admin.dashboard') }}">Dashboard Admin</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin.content') }}">Contenidos</a>
@@ -31,8 +31,33 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin.students') }}">Estudiantes</a>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="exercisesDropdown" role="button" data-bs-toggle="dropdown">
+                            Gestión Ejercicios
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('teacher.dashboard') }}">Dashboard Ejercicios</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('teacher.exercises') }}">Banco de Ejercicios</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('teacher.generate_exercises') }}">Generar Ejercicios</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('teacher.create_exercise') }}">Crear Ejercicio</a></li>
+                        </ul>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin.ai_config') }}">Configuración IA</a>
+                    </li>
+                    {% elif current_user.role == 'teacher' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('teacher.exercises') }}">Banco de Ejercicios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('teacher.generate_exercises') }}">Generar Ejercicios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('teacher.create_exercise') }}">Crear Ejercicio</a>
                     </li>
                     {% else %}
                     <li class="nav-item">

@@ -6,6 +6,7 @@ from app.models.student_profile import StudentProfile
 from app.models.book import Book
 from app.models.topic import Topic
 from app.models.exercise import Exercise
+from app.models.exercise_usage import ExerciseUsage
 from app.models.submission import Submission
 from app.models.student_score import StudentScore
 from app.models.document_embedding import DocumentEmbedding
@@ -16,6 +17,7 @@ __all__ = [
     'Book',
     'Topic',
     'Exercise',
+    'ExerciseUsage',
     'Submission',
     'StudentScore',
     'DocumentEmbedding'

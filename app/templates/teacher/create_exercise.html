@@ -1,0 +1,206 @@
+{% extends "base/base.html" %}
+
+{% block title %}Crear Ejercicio - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h1 class="mb-4">
+                <i class="bi bi-plus-circle"></i> Crear Ejercicio Manualmente
+            </h1>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Nuevo Ejercicio</h5>
+                </div>
+                <div class="card-body">
+                    <form id="createForm">
+                        <div class="mb-3">
+                            <label for="topic" class="form-label">Tema *</label>
+                            <select class="form-select" id="topic" name="topic_id" required>
+                                <option value="">Selecciona un tema</option>
+                                {% for topic in topics %}
+                                <option value="{{ topic.id }}">{{ topic.topic_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="difficulty" class="form-label">Dificultad *</label>
+                            <select class="form-select" id="difficulty" name="difficulty" required>
+                                <option value="easy">Fácil</option>
+                                <option value="medium" selected>Media</option>
+                                <option value="hard">Difícil</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Contenido del Ejercicio *</label>
+                            <textarea class="form-control" id="content" name="content" rows="5"
+                                      placeholder="Escribe el enunciado del ejercicio..."
+                                      required></textarea>
+                            <div class="form-text">Escribe el enunciado completo del ejercicio</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="solution" class="form-label">Solución *</label>
+                            <textarea class="form-control" id="solution" name="solution" rows="4"
+                                      placeholder="Escribe la solución del ejercicio..."
+                                      required></textarea>
+                            <div class="form-text">Proporciona la solución correcta</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="methodology" class="form-label">Metodología (Opcional)</label>
+                            <textarea class="form-control" id="methodology" name="methodology" rows="4"
+                                      placeholder="Describe los pasos para resolver el ejercicio..."></textarea>
+                            <div class="form-text">Describe el proceso paso a paso para llegar a la solución</div>
+                        </div>
+
+                        <hr>
+
+                        <h5 class="mb-3"><i class="bi bi-gear"></i> Procedimientos (Opcional)</h5>
+
+                        <div class="mb-3">
+                            <label class="form-label">Procedimientos Disponibles</label>
+                            <div id="procedures-container">
+                                <div class="input-group mb-2 procedure-item">
+                                    <input type="text" class="form-control procedure-name" placeholder="Nombre del procedimiento">
+                                    <input type="text" class="form-control procedure-desc" placeholder="Descripción">
+                                    <button class="btn btn-outline-danger" type="button" onclick="removeProcedure(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addProcedure()">
+                                <i class="bi bi-plus"></i> Añadir Procedimiento
+                            </button>
+                            <div class="form-text">Define los procedimientos/técnicas matemáticas relacionadas con este ejercicio</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="expected-procedures" class="form-label">IDs de Procedimientos Esperados (Opcional)</label>
+                            <input type="text" class="form-control" id="expected-procedures" name="expected_procedures"
+                                   placeholder="Ej: 1,2,3">
+                            <div class="form-text">Ingresa los IDs de los procedimientos que el estudiante debe seleccionar, separados por comas</div>
+                        </div>
+
+                        <div class="alert alert-success">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Nota:</strong> Los ejercicios creados manualmente se marcan automáticamente como "Validados"
+                            y estarán disponibles inmediatamente para los estudiantes.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg" id="createBtn">
+                                <i class="bi bi-check-circle"></i> Crear Ejercicio
+                            </button>
+                            <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let procedureIdCounter = 1;
+
+function addProcedure() {
+    const container = document.getElementById('procedures-container');
+    const procedureItem = document.createElement('div');
+    procedureItem.className = 'input-group mb-2 procedure-item';
+    procedureItem.innerHTML = `
+        <input type="text" class="form-control procedure-name" placeholder="Nombre del procedimiento">
+        <input type="text" class="form-control procedure-desc" placeholder="Descripción">
+        <button class="btn btn-outline-danger" type="button" onclick="removeProcedure(this)">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
+    container.appendChild(procedureItem);
+}
+
+function removeProcedure(button) {
+    button.closest('.procedure-item').remove();
+}
+
+document.getElementById('createForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    // Collect procedures
+    const procedureItems = document.querySelectorAll('.procedure-item');
+    const available_procedures = [];
+    let procId = 1;
+
+    procedureItems.forEach(item => {
+        const name = item.querySelector('.procedure-name').value.trim();
+        const description = item.querySelector('.procedure-desc').value.trim();
+
+        if (name) {
+            available_procedures.push({
+                id: procId++,
+                name: name,
+                description: description
+            });
+        }
+    });
+
+    // Parse expected procedures
+    const expectedProcsInput = document.getElementById('expected-procedures').value.trim();
+    const expected_procedures = expectedProcsInput
+        ? expectedProcsInput.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+        : [];
+
+    const formData = {
+        topic_id: document.getElementById('topic').value,
+        difficulty: document.getElementById('difficulty').value,
+        content: document.getElementById('content').value,
+        solution: document.getElementById('solution').value,
+        methodology: document.getElementById('methodology').value,
+        available_procedures: available_procedures,
+        expected_procedures: expected_procedures
+    };
+
+    // Validate
+    if (!formData.topic_id || !formData.content || !formData.solution) {
+        alert('Por favor completa todos los campos obligatorios');
+        return;
+    }
+
+    // Disable button
+    const createBtn = document.getElementById('createBtn');
+    createBtn.disabled = true;
+    createBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creando...';
+
+    // Make request
+    fetch('/teacher/create-exercise', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Ejercicio creado correctamente');
+            window.location.href = `/teacher/exercise/${data.exercise_id}`;
+        } else {
+            alert('Error: ' + data.message);
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<i class="bi bi-check-circle"></i> Crear Ejercicio';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al crear ejercicio: ' + error.message);
+        createBtn.disabled = false;
+        createBtn.innerHTML = '<i class="bi bi-check-circle"></i> Crear Ejercicio';
+    });
+});
+</script>
+{% endblock %}

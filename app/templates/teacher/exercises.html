@@ -1,0 +1,148 @@
+{% extends "base/base.html" %}
+
+{% block title %}Banco de Ejercicios - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">
+        <i class="bi bi-collection"></i> Banco de Ejercicios
+    </h1>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{{ url_for('teacher.exercises') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Estado</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Todos</option>
+                        <option value="validated" {% if status_filter == 'validated' %}selected{% endif %}>Validados</option>
+                        <option value="pending_validation" {% if status_filter == 'pending_validation' %}selected{% endif %}>Pendientes</option>
+                        <option value="auto_generated" {% if status_filter == 'auto_generated' %}selected{% endif %}>Auto-generados</option>
+                        <option value="teacher_created" {% if status_filter == 'teacher_created' %}selected{% endif %}>Creados por profesor</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="topic" class="form-label">Tema</label>
+                    <select class="form-select" id="topic" name="topic">
+                        <option value="">Todos</option>
+                        {% for topic in topics %}
+                        <option value="{{ topic.id }}" {% if topic_filter == topic.id %}selected{% endif %}>
+                            {{ topic.topic_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="difficulty" class="form-label">Dificultad</label>
+                    <select class="form-select" id="difficulty" name="difficulty">
+                        <option value="">Todas</option>
+                        <option value="easy" {% if difficulty_filter == 'easy' %}selected{% endif %}>Fácil</option>
+                        <option value="medium" {% if difficulty_filter == 'medium' %}selected{% endif %}>Media</option>
+                        <option value="hard" {% if difficulty_filter == 'hard' %}selected{% endif %}>Difícil</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('teacher.exercises') }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Exercises List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-list"></i> Ejercicios
+                <span class="badge bg-primary">{{ exercises|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if exercises %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Contenido</th>
+                            <th>Tema</th>
+                            <th>Dificultad</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exercise in exercises %}
+                        <tr>
+                            <td>{{ exercise.id }}</td>
+                            <td>
+                                <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {{ exercise.content[:100] }}...
+                                </div>
+                            </td>
+                            <td>
+                                {% if exercise.topic %}
+                                <span class="badge bg-info">{{ exercise.topic.topic_name }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if exercise.difficulty == 'easy' %}
+                                <span class="badge bg-success">Fácil</span>
+                                {% elif exercise.difficulty == 'medium' %}
+                                <span class="badge bg-warning">Media</span>
+                                {% else %}
+                                <span class="badge bg-danger">Difícil</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if exercise.status == 'validated' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Validado
+                                </span>
+                                {% elif exercise.status == 'pending_validation' %}
+                                <span class="badge bg-warning">
+                                    <i class="bi bi-clock-history"></i> Pendiente
+                                </span>
+                                {% elif exercise.status == 'teacher_created' %}
+                                <span class="badge bg-primary">
+                                    <i class="bi bi-person"></i> Creado
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-cpu"></i> Auto-generado
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ exercise.generated_at.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                <a href="{{ url_for('teacher.view_exercise', exercise_id=exercise.id) }}"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No se encontraron ejercicios con los filtros seleccionados.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

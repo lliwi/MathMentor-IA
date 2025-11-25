@@ -11,6 +11,7 @@ from functools import wraps
 from app.student import student_bp
 from app import db
 from app.models.exercise import Exercise
+from app.models.exercise_usage import ExerciseUsage
 from app.models.submission import Submission
 from app.models.topic import Topic
 from app.models.student_profile import StudentProfile
@@ -234,7 +235,7 @@ def prefetch_next():
 @student_bp.route('/generate-exercise', methods=['POST'])
 @student_required
 def generate_exercise():
-    """Generate a new exercise for the student using pool-based caching"""
+    """Get an exercise for the student from exercise bank or generate new one"""
     try:
         start_total = time.time()
 
@@ -265,28 +266,36 @@ def generate_exercise():
             })
 
         difficulty = request.json.get('difficulty', 'medium')
-        cache_service = CacheService()
 
-        # Get list of completed exercise contents to prevent duplicates
-        start_completed = time.time()
-        completed_exercise_contents = AnalyticsService.get_completed_exercise_contents(current_user.id)
-        completed_time = time.time() - start_completed
-        print(f"[TIMING] Get completed exercises ({len(completed_exercise_contents)} total): {completed_time:.3f}s")
+        # Get list of used exercise IDs for this student
+        used_exercise_ids = [usage.exercise_id for usage in
+                            ExerciseUsage.query.filter_by(student_id=current_user.id).all()]
 
-        # Try to get exercise from pool first
-        start_pool = time.time()
-        exercise_data = cache_service.get_exercise_from_pool(
-            topic=topic.topic_name,
-            difficulty=difficulty,
-            course=profile.course,
-            completed_exercise_contents=completed_exercise_contents
-        )
-        pool_time = time.time() - start_pool
-        print(f"[TIMING] Pool lookup: {pool_time:.3f}s")
+        # Try to find an available exercise from the bank
+        # Priority 1: Validated exercises
+        exercise = Exercise.query.filter(
+            Exercise.topic_id == topic_id,
+            Exercise.difficulty == difficulty,
+            Exercise.status == 'validated',
+            ~Exercise.id.in_(used_exercise_ids) if used_exercise_ids else True
+        ).first()
 
-        # If no exercise in pool, generate a new one
-        if not exercise_data:
-            print(f"[Practice] Pool empty/exhausted - generating new exercise")
+        exercise_source = 'validated_bank'
+
+        # Priority 2: Pending validation or teacher-created exercises
+        if not exercise:
+            print(f"[Practice] No validated exercises found, trying pending/teacher-created")
+            exercise = Exercise.query.filter(
+                Exercise.topic_id == topic_id,
+                Exercise.difficulty == difficulty,
+                Exercise.status.in_(['pending_validation', 'teacher_created']),
+                ~Exercise.id.in_(used_exercise_ids) if used_exercise_ids else True
+            ).first()
+            exercise_source = 'pending_bank'
+
+        # Priority 3: Generate new exercise if bank is exhausted
+        if not exercise:
+            print(f"[Practice] Exercise bank exhausted - generating new exercise")
 
             # Get context from RAG
             start_rag = time.time()
@@ -307,45 +316,46 @@ def generate_exercise():
             ai_time = time.time() - start_ai
             print(f"[TIMING] AI exercise generation: {ai_time:.3f}s")
 
-            # Add to pool for future use
-            cache_service.add_exercise_to_pool(
-                topic=topic.topic_name,
+            # Convert solution and methodology to strings if they are dict/list
+            solution = exercise_data.get('solution', '')
+            if isinstance(solution, (dict, list)):
+                solution = json.dumps(solution, ensure_ascii=False)
+
+            methodology = exercise_data.get('methodology', '')
+            if isinstance(methodology, (dict, list)):
+                methodology = json.dumps(methodology, ensure_ascii=False)
+
+            # Create exercise object in database with auto_generated status
+            start_db = time.time()
+            exercise = Exercise(
+                topic_id=topic_id,
+                content=exercise_data.get('content', ''),
+                solution=solution,
+                methodology=methodology,
+                available_procedures=exercise_data.get('available_procedures', []),
+                expected_procedures=exercise_data.get('expected_procedures', []),
                 difficulty=difficulty,
-                course=profile.course,
-                exercise_data=exercise_data,
-                pool_size=5
+                status='auto_generated'
             )
+            db.session.add(exercise)
+            db.session.commit()
+            db_time = time.time() - start_db
+            print(f"[TIMING] Database save: {db_time:.3f}s")
+            exercise_source = 'generated'
 
-        # Convert solution and methodology to strings if they are dict/list
-        solution = exercise_data.get('solution', '')
-        if isinstance(solution, (dict, list)):
-            solution = json.dumps(solution, ensure_ascii=False)
-
-        methodology = exercise_data.get('methodology', '')
-        if isinstance(methodology, (dict, list)):
-            methodology = json.dumps(methodology, ensure_ascii=False)
-
-        # Create exercise object in database
-        start_db = time.time()
-        exercise = Exercise(
-            topic_id=topic_id,
-            content=exercise_data.get('content', ''),
-            solution=solution,
-            methodology=methodology,
-            available_procedures=exercise_data.get('available_procedures', []),
-            expected_procedures=exercise_data.get('expected_procedures', []),
-            difficulty=difficulty
+        # Mark exercise as used by this student
+        usage = ExerciseUsage(
+            exercise_id=exercise.id,
+            student_id=current_user.id
         )
-        db.session.add(exercise)
+        db.session.add(usage)
         db.session.commit()
-        db_time = time.time() - start_db
-        print(f"[TIMING] Database save: {db_time:.3f}s")
 
         # Store exercise ID in session
         session['current_exercise_id'] = exercise.id
 
         total_time = time.time() - start_total
-        print(f"[TIMING] TOTAL generate_exercise: {total_time:.3f}s")
+        print(f"[TIMING] TOTAL generate_exercise: {total_time:.3f}s (source: {exercise_source})")
 
         return jsonify({
             'success': True,

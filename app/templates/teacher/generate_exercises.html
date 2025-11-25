@@ -1,0 +1,189 @@
+{% extends "base/base.html" %}
+
+{% block title %}Generar Ejercicios - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mb-4">
+                <i class="bi bi-cpu"></i> Generar Ejercicios con IA
+            </h1>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Configuración de Generación</h5>
+                </div>
+                <div class="card-body">
+                    <form id="generateForm">
+                        <div class="mb-3">
+                            <label for="topic" class="form-label">Tema *</label>
+                            <select class="form-select" id="topic" name="topic_id" required>
+                                <option value="">Selecciona un tema</option>
+                                {% for topic in topics %}
+                                <option value="{{ topic.id }}">{{ topic.topic_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Selecciona el tema para los ejercicios</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="difficulty" class="form-label">Dificultad *</label>
+                            <select class="form-select" id="difficulty" name="difficulty" required>
+                                <option value="easy">Fácil</option>
+                                <option value="medium" selected>Media</option>
+                                <option value="hard">Difícil</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">Cantidad *</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity"
+                                   min="1" max="20" value="5" required>
+                            <div class="form-text">Número de ejercicios a generar (1-20)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="course" class="form-label">Curso</label>
+                            <select class="form-select" id="course" name="course">
+                                <option value="1º ESO">1º ESO</option>
+                                <option value="2º ESO">2º ESO</option>
+                                <option value="3º ESO" selected>3º ESO</option>
+                                <option value="4º ESO">4º ESO</option>
+                                <option value="1º Bachillerato">1º Bachillerato</option>
+                                <option value="2º Bachillerato">2º Bachillerato</option>
+                            </select>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Nota:</strong> Los ejercicios generados tendrán estado "Pendiente de validación".
+                            Podrás revisarlos y editarlos antes de validarlos para que estén disponibles para los estudiantes.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
+                                <i class="bi bi-cpu"></i> Generar Ejercicios
+                            </button>
+                            <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Progress Section (hidden initially) -->
+            <div id="progressSection" class="card mt-4" style="display: none;">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-hourglass-split"></i> Generando...</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress" style="height: 30px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    <p class="text-center mt-3" id="progressText">Iniciando generación...</p>
+                </div>
+            </div>
+
+            <!-- Results Section (hidden initially) -->
+            <div id="resultsSection" class="card mt-4" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-check-circle"></i> Ejercicios Generados</h5>
+                </div>
+                <div class="card-body">
+                    <p id="resultsMessage"></p>
+                    <div class="d-grid gap-2">
+                        <a href="#" id="viewExercisesBtn" class="btn btn-primary">
+                            <i class="bi bi-eye"></i> Ver Ejercicios Generados
+                        </a>
+                        <button class="btn btn-secondary" onclick="location.reload()">
+                            <i class="bi bi-arrow-repeat"></i> Generar Más Ejercicios
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = {
+        topic_id: document.getElementById('topic').value,
+        difficulty: document.getElementById('difficulty').value,
+        quantity: parseInt(document.getElementById('quantity').value),
+        course: document.getElementById('course').value
+    };
+
+    // Validate
+    if (!formData.topic_id) {
+        alert('Por favor selecciona un tema');
+        return;
+    }
+
+    // Show progress
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('generateBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generando...';
+
+    // Simulate progress (since actual generation might take time)
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += 5;
+        if (progress <= 90) {
+            updateProgress(progress, `Generando ejercicio ${Math.floor(progress / (90 / formData.quantity))} de ${formData.quantity}...`);
+        }
+    }, 500);
+
+    // Make request
+    fetch('/teacher/generate-exercises', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        updateProgress(100, 'Completado');
+
+        if (data.success) {
+            setTimeout(() => {
+                document.getElementById('progressSection').style.display = 'none';
+                document.getElementById('resultsSection').style.display = 'block';
+                document.getElementById('resultsMessage').innerHTML = `
+                    <p class="lead"><i class="bi bi-check-circle-fill text-success"></i> ${data.message}</p>
+                    <p>Los ejercicios están listos para ser revisados y validados.</p>
+                `;
+                document.getElementById('viewExercisesBtn').href = '/teacher/exercises?status=pending_validation';
+            }, 500);
+        } else {
+            alert('Error: ' + data.message);
+            document.getElementById('generateBtn').disabled = false;
+            document.getElementById('generateBtn').innerHTML = '<i class="bi bi-cpu"></i> Generar Ejercicios';
+            document.getElementById('progressSection').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        console.error('Error:', error);
+        alert('Error al generar ejercicios: ' + error.message);
+        document.getElementById('generateBtn').disabled = false;
+        document.getElementById('generateBtn').innerHTML = '<i class="bi bi-cpu"></i> Generar Ejercicios';
+        document.getElementById('progressSection').style.display = 'none';
+    });
+});
+
+function updateProgress(percentage, text) {
+    const progressBar = document.getElementById('progressBar');
+    progressBar.style.width = percentage + '%';
+    progressBar.textContent = percentage + '%';
+    document.getElementById('progressText').textContent = text;
+}
+</script>
+{% endblock %}

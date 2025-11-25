@@ -22,8 +22,18 @@ class Exercise(db.Model):
     difficulty = db.Column(db.String(20), default='medium')  # easy, medium, hard
     generated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Exercise bank management
+    status = db.Column(db.String(30), default='auto_generated')  # auto_generated, pending_validation, validated, teacher_created
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Teacher who created/modified
+    validated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Teacher who validated
+    validated_at = db.Column(db.DateTime, nullable=True)
+    modification_notes = db.Column(db.Text, nullable=True)  # Notes about modifications
+
     # Relationships
     submissions = db.relationship('Submission', backref='exercise', lazy='dynamic', cascade='all, delete-orphan')
+    usage_records = db.relationship('ExerciseUsage', backref='exercise', lazy='dynamic', cascade='all, delete-orphan')
+    created_by = db.relationship('User', foreign_keys=[created_by_id], backref='created_exercises')
+    validated_by = db.relationship('User', foreign_keys=[validated_by_id], backref='validated_exercises')
 
     def __repr__(self):
-        return f'<Exercise {self.id} topic={self.topic_id} difficulty={self.difficulty}>'
+        return f'<Exercise {self.id} topic={self.topic_id} difficulty={self.difficulty} status={self.status}>'
