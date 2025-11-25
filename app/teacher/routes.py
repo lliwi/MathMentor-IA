@@ -242,24 +242,25 @@ def validate_exercise(exercise_id):
 @teacher_bp.route('/exercise/<int:exercise_id>/delete', methods=['POST'])
 @teacher_required
 def delete_exercise(exercise_id):
-    """Delete an exercise"""
+    """Delete an exercise (includes all related submissions and usage records)"""
     try:
         exercise = Exercise.query.get_or_404(exercise_id)
 
-        # Check if exercise has been used
+        # Get usage count for confirmation message
         usage_count = ExerciseUsage.query.filter_by(exercise_id=exercise_id).count()
-        if usage_count > 0:
-            return jsonify({
-                'success': False,
-                'message': f'No se puede eliminar un ejercicio que ya ha sido usado ({usage_count} veces)'
-            }), 400
+        submissions_count = len(exercise.submissions.all())
 
+        # Delete exercise (cascade will automatically delete related submissions and usage records)
         db.session.delete(exercise)
         db.session.commit()
 
+        message = f'Ejercicio eliminado correctamente'
+        if usage_count > 0 or submissions_count > 0:
+            message += f' (incluyendo {submissions_count} entregas de estudiantes)'
+
         return jsonify({
             'success': True,
-            'message': 'Ejercicio eliminado correctamente'
+            'message': message
         })
 
     except Exception as e:

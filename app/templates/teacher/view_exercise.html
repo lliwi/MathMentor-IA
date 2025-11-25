@@ -179,14 +179,13 @@
                             <i class="bi bi-save"></i> Guardar Cambios
                         </button>
 
-                        {% if usage_count == 0 %}
                         <button class="btn btn-danger" onclick="deleteExercise()">
                             <i class="bi bi-trash"></i> Eliminar Ejercicio
                         </button>
-                        {% else %}
-                        <button class="btn btn-secondary" disabled title="No se puede eliminar un ejercicio que ya ha sido usado">
-                            <i class="bi bi-trash"></i> Eliminar (No disponible)
-                        </button>
+                        {% if usage_count > 0 %}
+                        <small class="text-danger">
+                            <i class="bi bi-exclamation-triangle"></i> Este ejercicio ha sido usado {{ usage_count }} veces. Al eliminarlo se borrarán también todas las entregas de estudiantes asociadas.
+                        </small>
                         {% endif %}
                     </div>
                 </div>

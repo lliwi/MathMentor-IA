@@ -85,6 +85,7 @@ Requisitos:
 - 4-6 procedimientos (algunos correctos, otros no)
 - Descripciones de 1 línea máximo
 - Sin texto adicional fuera del JSON
+- IMPORTANTE: En el enunciado, cuando el problema involucre magnitudes físicas (longitud, peso, tiempo, velocidad, área, volumen, etc.), SIEMPRE especifica claramente: "Indica las unidades en tu respuesta" o "Expresa el resultado con sus unidades correspondientes"
 - IMPORTANTE: Usa emoticonos apropiados para hacer el ejercicio más divertido y motivador
   Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲"""
 
