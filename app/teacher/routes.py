@@ -11,6 +11,9 @@ from app import db
 from app.models.exercise import Exercise
 from app.models.topic import Topic
 from app.models.exercise_usage import ExerciseUsage
+from app.models.summary import Summary
+from app.models.summary_usage import SummaryUsage
+from app.models.student_score import StudentScore
 from app.services.rag_service import RAGService
 from app.ai_engines.factory import AIEngineFactory
 
@@ -44,6 +47,13 @@ def dashboard():
     pending_exercises = Exercise.query.filter_by(status='pending_validation').count()
     auto_generated_exercises = Exercise.query.filter_by(status='auto_generated').count()
     teacher_created_exercises = Exercise.query.filter_by(status='teacher_created').count()
+
+    # Get summary statistics
+    total_summaries = Summary.query.count()
+    validated_summaries = Summary.query.filter_by(status='validated').count()
+    pending_summaries = Summary.query.filter_by(status='pending_validation').count()
+    auto_generated_summaries = Summary.query.filter_by(status='auto_generated').count()
+    teacher_created_summaries = Summary.query.filter_by(status='teacher_created').count()
 
     # Get statistics by topic with filtering
     topics_query = Topic.query
@@ -113,7 +123,13 @@ def dashboard():
         'teacher_created': teacher_created_exercises,
         'topic_stats': topic_stats,
         'all_courses': sorted(all_courses),
-        'all_sources': sorted(all_sources, key=lambda x: x[1])
+        'all_sources': sorted(all_sources, key=lambda x: x[1]),
+        # Summary statistics
+        'total_summaries': total_summaries,
+        'validated_summaries': validated_summaries,
+        'pending_summaries': pending_summaries,
+        'auto_generated_summaries': auto_generated_summaries,
+        'teacher_created_summaries': teacher_created_summaries
     }
 
     return render_template('teacher/dashboard.html',
@@ -412,3 +428,216 @@ def create_exercise():
             }), 500
 
     return render_template('teacher/create_exercise.html', topics=topics)
+
+
+# ========== SUMMARY ROUTES ==========
+
+@teacher_bp.route('/summaries')
+@teacher_required
+def summaries():
+    """List all summaries with filters"""
+    # Get filter parameters
+    status_filter = request.args.get('status', '')
+    topic_filter = request.args.get('topic', type=int)
+
+    # Build query
+    query = Summary.query
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    if topic_filter:
+        query = query.filter_by(topic_id=topic_filter)
+
+    summaries = query.order_by(Summary.generated_at.desc()).all()
+    topics = Topic.query.all()
+
+    return render_template('teacher/summaries.html',
+                         summaries=summaries,
+                         topics=topics,
+                         status_filter=status_filter,
+                         topic_filter=topic_filter)
+
+
+@teacher_bp.route('/summary/<int:summary_id>')
+@teacher_required
+def view_summary(summary_id):
+    """View and edit a specific summary"""
+    summary = Summary.query.get_or_404(summary_id)
+    topic = Topic.query.get(summary.topic_id)
+
+    # Get usage statistics
+    usage_count = SummaryUsage.query.filter_by(summary_id=summary_id).count()
+    total_accesses = db.session.query(db.func.sum(SummaryUsage.access_count))\
+                               .filter_by(summary_id=summary_id).scalar() or 0
+
+    return render_template('teacher/view_summary.html',
+                         summary=summary,
+                         topic=topic,
+                         usage_count=usage_count,
+                         total_accesses=total_accesses)
+
+
+@teacher_bp.route('/summary/<int:summary_id>/edit', methods=['POST'])
+@teacher_required
+def edit_summary(summary_id):
+    """Edit a summary"""
+    try:
+        summary = Summary.query.get_or_404(summary_id)
+        data = request.json
+
+        summary.content = data.get('content', summary.content)
+        summary.modification_notes = data.get('modification_notes', '')
+        summary.created_by_id = current_user.id
+
+        # If auto-generated, change to pending validation
+        if summary.status == 'auto_generated':
+            summary.status = 'pending_validation'
+
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Resumen actualizado correctamente'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+
+@teacher_bp.route('/summary/<int:summary_id>/validate', methods=['POST'])
+@teacher_required
+def validate_summary(summary_id):
+    """Validate a summary"""
+    try:
+        summary = Summary.query.get_or_404(summary_id)
+        summary.status = 'validated'
+        summary.validated_by_id = current_user.id
+        summary.validated_at = datetime.utcnow()
+
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Resumen validado correctamente'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+
+@teacher_bp.route('/summary/<int:summary_id>/delete', methods=['POST'])
+@teacher_required
+def delete_summary(summary_id):
+    """Delete a summary (cascade deletes usage records)"""
+    try:
+        summary = Summary.query.get_or_404(summary_id)
+        usage_count = SummaryUsage.query.filter_by(summary_id=summary_id).count()
+
+        db.session.delete(summary)
+        db.session.commit()
+
+        message = 'Resumen eliminado correctamente'
+        if usage_count > 0:
+            message += f' (incluyendo {usage_count} registros de acceso)'
+
+        return jsonify({'success': True, 'message': message})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+
+@teacher_bp.route('/generate-summaries', methods=['GET', 'POST'])
+@teacher_required
+def generate_summaries():
+    """Generate summaries in batch"""
+    topics = Topic.query.all()
+
+    if request.method == 'POST':
+        try:
+            data = request.json
+            topic_ids = data.get('topic_ids', [])  # Multiple topics
+
+            ai_engine = AIEngineFactory.create()
+            rag_service = RAGService()
+            generated_summaries = []
+
+            for topic_id in topic_ids:
+                topic = Topic.query.get(topic_id)
+                if not topic:
+                    continue
+
+                # Check if summary already exists for this topic
+                existing = Summary.query.filter_by(topic_id=topic_id).first()
+                if existing:
+                    continue  # Skip, only one summary per topic
+
+                # Get context and generate
+                context = rag_service.get_context_for_topic(topic_id, top_k=3)
+                if not context:
+                    continue
+
+                summary_content = ai_engine.generate_topic_summary(
+                    topic=topic.topic_name,
+                    context=context,
+                    course=data.get('course', 'ESO')
+                )
+
+                # Create with pending_validation status
+                summary = Summary(
+                    topic_id=topic_id,
+                    content=summary_content,
+                    status='pending_validation',
+                    created_by_id=current_user.id
+                )
+                db.session.add(summary)
+                generated_summaries.append(summary)
+
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'{len(generated_summaries)} resúmenes generados',
+                'summary_ids': [s.id for s in generated_summaries]
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+    return render_template('teacher/generate_summaries.html', topics=topics)
+
+
+@teacher_bp.route('/create-summary', methods=['GET', 'POST'])
+@teacher_required
+def create_summary():
+    """Create a new summary manually"""
+    topics = Topic.query.all()
+
+    if request.method == 'POST':
+        try:
+            data = request.json
+            topic_id = data.get('topic_id')
+
+            if not topic_id:
+                return jsonify({'success': False, 'message': 'Debe seleccionar un tema'})
+
+            # Check if summary already exists
+            existing = Summary.query.filter_by(topic_id=topic_id).first()
+            if existing:
+                return jsonify({'success': False,
+                              'message': 'Ya existe un resumen para este tema'})
+
+            # Create with teacher_created status (auto-validated)
+            summary = Summary(
+                topic_id=topic_id,
+                content=data.get('content', ''),
+                status='teacher_created',
+                created_by_id=current_user.id,
+                validated_by_id=current_user.id,
+                validated_at=datetime.utcnow()
+            )
+            db.session.add(summary)
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Resumen creado correctamente',
+                'summary_id': summary.id
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+    return render_template('teacher/create_summary.html', topics=topics)

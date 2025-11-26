@@ -149,12 +149,22 @@ def practice():
 
     # Get student's assigned topics
     topics = []
+    purchased_topic_ids = []
     if profile:
         topic_ids = profile.get_topics()
         if topic_ids:
             topics = Topic.query.filter(Topic.id.in_(topic_ids)).all()
-    
-    return render_template('student/practice.html', stats=stats, topics=topics)
+
+            # Get topic IDs of summaries already purchased by this student
+            from app.models.summary import Summary
+            from app.models.summary_usage import SummaryUsage
+            purchased_summaries = db.session.query(Summary.topic_id)\
+                .join(SummaryUsage)\
+                .filter(SummaryUsage.student_id == current_user.id)\
+                .all()
+            purchased_topic_ids = [s.topic_id for s in purchased_summaries]
+
+    return render_template('student/practice.html', stats=stats, topics=topics, purchased_topic_ids=purchased_topic_ids)
 
 
 def _prefetch_next_exercise_background(app, topic_id, course, student_id, difficulty):
@@ -590,12 +600,14 @@ def buy_hint():
 @student_bp.route("/buy-summary", methods=["POST"])
 @student_required
 def buy_summary():
-    """Purchase a topic summary using points"""
+    """Purchase/access a topic summary using bank system"""
     try:
+        from app.models.summary import Summary
+        from app.models.summary_usage import SummaryUsage
+
         data = request.json
         topic_id = data.get("topic_id")
 
-        # Get topic
         topic = Topic.query.get(topic_id)
         if not topic:
             return jsonify({"success": False, "message": "Tema no encontrado"})
@@ -603,35 +615,124 @@ def buy_summary():
         # Check if student has this topic assigned
         profile = current_user.student_profile
         if not profile or topic_id not in profile.get_topics():
-            return jsonify({"success": False, "message": "No tienes este tema asignado"})
+            return jsonify({"success": False,
+                          "message": "No tienes este tema asignado"})
 
-        # Purchase summary
-        success, message = ScoringService.purchase_summary(current_user.id)
-        if not success:
-            return jsonify({"success": False, "message": message})
+        # Step 1: Check if student already accessed this topic's summary (RE-ACCESS)
+        existing_usage = SummaryUsage.query.join(Summary)\
+            .filter(Summary.topic_id == topic_id,
+                   SummaryUsage.student_id == current_user.id).first()
 
-        # Generate summary using AI
-        ai_engine = AIEngineFactory.create()
-        rag_service = RAGService()
-        context = rag_service.get_context_for_topic(topic_id, top_k=3)
+        if existing_usage:
+            # RE-ACCESS: FREE, update last_accessed_at and access_count
+            existing_usage.last_accessed_at = datetime.utcnow()
+            existing_usage.access_count += 1
+            db.session.commit()
 
-        summary = ai_engine.generate_topic_summary(
-            topic=topic.topic_name,
-            context=context,
-            course=profile.course
+            summary = Summary.query.get(existing_usage.summary_id)
+            stats = ScoringService.get_student_statistics(current_user.id)
+
+            return jsonify({
+                "success": True,
+                "summary": summary.content,
+                "topic_name": topic.topic_name,
+                "message": "Accediendo a tu resumen guardado (GRATIS)",
+                "available_points": stats["available_points"],
+                "is_reaccess": True
+            })
+
+        # Step 2: Look for summary in bank (only one summary per topic)
+        summary = Summary.query.filter_by(topic_id=topic_id).first()
+
+        # Step 3: If no summary in bank, generate new one
+        if not summary:
+            # Purchase first (costs 15 points)
+            success, message = ScoringService.purchase_summary(current_user.id)
+            if not success:
+                return jsonify({"success": False, "message": message})
+
+            # Generate with AI
+            ai_engine = AIEngineFactory.create()
+            rag_service = RAGService()
+            context = rag_service.get_context_for_topic(topic_id, top_k=3)
+
+            if not context:
+                # Refund points if no context
+                student_score = StudentScore.query.filter_by(
+                    student_id=current_user.id).first()
+                student_score.add_points(15)  # Refund
+                db.session.commit()
+                return jsonify({"success": False,
+                              "message": "No hay contexto disponible para este tema"})
+
+            summary_content = ai_engine.generate_topic_summary(
+                topic=topic.topic_name,
+                context=context,
+                course=profile.course
+            )
+
+            # Create new summary with auto_generated status
+            summary = Summary(
+                topic_id=topic_id,
+                content=summary_content,
+                status='auto_generated'
+            )
+            db.session.add(summary)
+            db.session.flush()  # Get ID
+        else:
+            # Summary exists in bank, purchase it (costs 15 points)
+            success, message = ScoringService.purchase_summary(current_user.id)
+            if not success:
+                return jsonify({"success": False, "message": message})
+
+        # Step 4: Create usage record
+        usage = SummaryUsage(
+            summary_id=summary.id,
+            student_id=current_user.id,
+            points_paid=15
         )
+        db.session.add(usage)
+        db.session.commit()
 
         # Get updated stats
         stats = ScoringService.get_student_statistics(current_user.id)
 
         return jsonify({
             "success": True,
-            "summary": summary,
+            "summary": summary.content,
             "topic_name": topic.topic_name,
-            "message": message,
-            "available_points": stats["available_points"]
+            "message": "Resumen comprado correctamente por 15 puntos",
+            "available_points": stats["available_points"],
+            "is_reaccess": False
         })
 
     except Exception as e:
-        return jsonify({"success": False, "message": f"Error al generar resumen: {str(e)}"})
+        db.session.rollback()
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+
+@student_bp.route('/my-summaries')
+@student_required
+def my_summaries():
+    """Show student's purchased summaries history"""
+    from app.models.summary import Summary
+    from app.models.summary_usage import SummaryUsage
+
+    # Get all summaries accessed by this student
+    usage_records = SummaryUsage.query.filter_by(student_id=current_user.id)\
+        .order_by(SummaryUsage.last_accessed_at.desc()).all()
+
+    summaries_data = []
+    for usage in usage_records:
+        summary = Summary.query.get(usage.summary_id)
+        if summary:
+            topic = Topic.query.get(summary.topic_id)
+            summaries_data.append({
+                'usage': usage,
+                'summary': summary,
+                'topic': topic
+            })
+
+    return render_template('student/my_summaries.html',
+                         summaries_data=summaries_data)
 

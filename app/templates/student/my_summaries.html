@@ -1,0 +1,181 @@
+{% extends "base/base.html" %}
+
+{% block title %}Mis Resúmenes - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">
+        <i class="bi bi-book-fill"></i> Mis Resúmenes
+    </h1>
+
+    {% if summaries_data %}
+    <p class="lead">Aquí tienes todos los resúmenes que has comprado. Puedes acceder a ellos tantas veces como quieras, ¡GRATIS!</p>
+
+    <div class="row">
+        {% for data in summaries_data %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-book"></i> {{ data.topic.topic_name if data.topic else 'N/A' }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Primera compra:</dt>
+                        <dd class="col-sm-6">{{ data.usage.first_accessed_at.strftime('%d/%m/%Y') }}</dd>
+
+                        <dt class="col-sm-6">Último acceso:</dt>
+                        <dd class="col-sm-6">{{ data.usage.last_accessed_at.strftime('%d/%m/%Y') }}</dd>
+
+                        <dt class="col-sm-6">Total accesos:</dt>
+                        <dd class="col-sm-6"><span class="badge bg-primary">{{ data.usage.access_count }}</span></dd>
+
+                        <dt class="col-sm-6">Puntos pagados:</dt>
+                        <dd class="col-sm-6"><span class="badge bg-warning">{{ data.usage.points_paid }}</span></dd>
+                    </dl>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary w-100 view-summary-btn"
+                            data-summary-id="{{ data.summary.id }}"
+                            data-topic-name="{{ data.topic.topic_name if data.topic else 'Resumen' }}">
+                        <i class="bi bi-eye"></i> Ver Resumen (GRATIS)
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        <h4 class="alert-heading"><i class="bi bi-info-circle"></i> No has comprado ningún resumen todavía</h4>
+        <p>Los resúmenes de temas te ayudan a estudiar antes de practicar. Puedes comprarlos desde la página de práctica por <strong>15 puntos</strong>.</p>
+        <hr>
+        <p class="mb-0">
+            <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary">
+                <i class="bi bi-arrow-left"></i> Volver al Dashboard
+            </a>
+            <a href="{{ url_for('student.practice') }}" class="btn btn-success">
+                <i class="bi bi-play-circle"></i> Ir a Practicar
+            </a>
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Summary Modal -->
+<div class="modal fade" id="summaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-book-fill"></i> <span id="summary-topic-name"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-success">
+                    <i class="bi bi-info-circle"></i> Acceso gratuito - Ya compraste este resumen
+                </div>
+                <div id="summary-content" class="markdown-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+// Store summary content safely
+const summaryContents = {
+    {% for data in summaries_data %}
+    {{ data.summary.id }}: {{ data.summary.content|tojson|safe }}{{ "," if not loop.last else "" }}
+    {% endfor %}
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const summaryModal = new bootstrap.Modal(document.getElementById('summaryModal'));
+    const viewButtons = document.querySelectorAll('.view-summary-btn');
+
+    viewButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const summaryId = parseInt(this.dataset.summaryId);
+            const topicName = this.dataset.topicName;
+            const content = summaryContents[summaryId];
+
+            if (!content) {
+                alert('Error: No se pudo cargar el contenido del resumen');
+                return;
+            }
+
+            // Set topic name
+            document.getElementById('summary-topic-name').textContent = topicName;
+
+            // Render markdown content
+            const summaryHtml = marked.parse(content);
+            document.getElementById('summary-content').innerHTML = summaryHtml;
+
+            // Render any LaTeX formulas if MathJax is available
+            if (typeof MathJax !== 'undefined') {
+                MathJax.typesetPromise([document.getElementById('summary-content')])
+                    .catch((err) => console.log('MathJax error:', err));
+            }
+
+            // Show modal
+            summaryModal.show();
+        });
+    });
+});
+</script>
+
+<style>
+.markdown-content {
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.markdown-content h1 {
+    font-size: 2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: #28a745;
+}
+
+.markdown-content h2 {
+    font-size: 1.5rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+    color: #17a2b8;
+}
+
+.markdown-content h3 {
+    font-size: 1.25rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.markdown-content code {
+    background-color: #f8f9fa;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 90%;
+}
+
+.markdown-content pre {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+
+.markdown-content ul, .markdown-content ol {
+    margin-left: 1.5rem;
+}
+
+.markdown-content li {
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}

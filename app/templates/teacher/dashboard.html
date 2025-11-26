@@ -8,7 +8,8 @@
         <i class="bi bi-house-door"></i> Dashboard Profesor
     </h1>
 
-    <!-- Statistics Cards -->
+    <!-- Exercises Statistics -->
+    <h3 class="mb-3"><i class="bi bi-collection"></i> Estadísticas de Ejercicios</h3>
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card bg-primary text-white">
@@ -59,6 +60,66 @@
                         <div>
                             <h6 class="card-title">Auto-generados</h6>
                             <h2 class="mb-0">{{ stats.auto_generated }}</h2>
+                        </div>
+                        <i class="bi bi-cpu fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summaries Statistics -->
+    <h3 class="mb-3"><i class="bi bi-book-fill"></i> Estadísticas de Resúmenes</h3>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Total Resúmenes</h6>
+                            <h2 class="mb-0">{{ stats.total_summaries }}</h2>
+                        </div>
+                        <i class="bi bi-book-fill fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Validados</h6>
+                            <h2 class="mb-0">{{ stats.validated_summaries }}</h2>
+                        </div>
+                        <i class="bi bi-check-circle fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Pendientes</h6>
+                            <h2 class="mb-0">{{ stats.pending_summaries }}</h2>
+                        </div>
+                        <i class="bi bi-clock-history fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Auto-generados</h6>
+                            <h2 class="mb-0">{{ stats.auto_generated_summaries }}</h2>
                         </div>
                         <i class="bi bi-cpu fs-1"></i>
                     </div>

@@ -95,9 +95,15 @@
                     <div class="list-group-item p-2">
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="small">{{ topic.topic_name }}</span>
+                            {% if topic.id in purchased_topic_ids %}
+                            <button class="btn btn-sm btn-info buy-summary-btn" data-topic-id="{{ topic.id }}" data-topic-name="{{ topic.topic_name }}">
+                                <i class="bi bi-check-circle"></i> Ver (GRATIS)
+                            </button>
+                            {% else %}
                             <button class="btn btn-sm btn-success buy-summary-btn" data-topic-id="{{ topic.id }}" data-topic-name="{{ topic.topic_name }}">
                                 <i class="bi bi-cart-plus"></i> 15pts
                             </button>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -748,66 +754,77 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Summary purchase functionality
 document.addEventListener('DOMContentLoaded', function() {
-    const summaryButtons = document.querySelectorAll('.buy-summary-btn');
     const summaryModal = new bootstrap.Modal(document.getElementById('summaryModal'));
 
-    summaryButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const topicId = this.dataset.topicId;
-            const topicName = this.dataset.topicName;
+    // Use event delegation to handle clicks on summary buttons (works even after content changes)
+    document.addEventListener('click', function(e) {
+        // Check if clicked element or its parent is a buy-summary-btn
+        const btn = e.target.closest('.buy-summary-btn');
+        if (!btn) return;
 
-            if (!confirm(`¿Comprar resumen de "${topicName}" por 15 puntos?`)) {
-                return;
-            }
+        e.preventDefault();
 
-            // Disable button and show loading
-            this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        const topicId = btn.dataset.topicId;
+        const topicName = btn.dataset.topicName;
+        const originalHtml = btn.innerHTML;
 
-            fetch('{{ url_for("student.buy_summary") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ topic_id: parseInt(topicId) })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update points display
-                    document.getElementById('points-display').textContent = data.available_points;
+        // Disable button and show loading
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-                    // Set modal content
-                    document.getElementById('summary-topic-name').textContent = data.topic_name;
+        fetch('{{ url_for("student.buy_summary") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ topic_id: parseInt(topicId) })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update points display
+                document.getElementById('points-display').textContent = data.available_points;
 
-                    // Render markdown content
-                    const summaryHtml = marked.parse(data.summary);
-                    document.getElementById('summary-content').innerHTML = summaryHtml;
+                // Set modal content
+                document.getElementById('summary-topic-name').textContent = data.topic_name;
 
-                    // Trigger MathJax rendering for LaTeX formulas
-                    if (window.MathJax) {
-                        MathJax.typesetPromise([document.getElementById('summary-content')]);
-                    }
+                // Render markdown content
+                const summaryHtml = marked.parse(data.summary);
+                document.getElementById('summary-content').innerHTML = summaryHtml;
 
-                    // Show modal
-                    summaryModal.show();
-
-                    // Show success message
-                    alert(data.message);
-                } else {
-                    alert(data.message);
+                // Trigger MathJax rendering for LaTeX formulas
+                if (window.MathJax) {
+                    MathJax.typesetPromise([document.getElementById('summary-content')]);
                 }
 
-                // Re-enable button
-                this.disabled = false;
-                this.innerHTML = '<i class="bi bi-cart-plus"></i> 15pts';
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error al comprar el resumen. Por favor, intenta de nuevo.');
-                this.disabled = false;
-                this.innerHTML = '<i class="bi bi-cart-plus"></i> 15pts';
-            });
+                // Show modal
+                summaryModal.show();
+
+                // Update button based on re-access status
+                if (data.is_reaccess) {
+                    // Already purchased, just show it was free
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Ver (GRATIS)';
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-info');
+                } else {
+                    // First purchase
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Ver (GRATIS)';
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-info');
+                    // Show purchase confirmation without blocking
+                    setTimeout(() => alert(data.message), 100);
+                }
+            } else {
+                alert(data.message);
+                btn.innerHTML = originalHtml;
+            }
+            btn.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al acceder al resumen. Por favor, intenta de nuevo.');
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         });
     });
 });

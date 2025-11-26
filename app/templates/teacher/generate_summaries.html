@@ -1,0 +1,193 @@
+{% extends "base/base.html" %}
+
+{% block title %}Generar Resúmenes - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mb-4">
+                <i class="bi bi-cpu"></i> Generar Resúmenes con IA
+            </h1>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Configuración de Generación</h5>
+                </div>
+                <div class="card-body">
+                    <form id="generateForm">
+                        <div class="mb-3">
+                            <label class="form-label">Temas a generar *</label>
+                            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 10px;">
+                                {% for topic in topics %}
+                                <div class="form-check">
+                                    <input class="form-check-input topic-checkbox" type="checkbox"
+                                           value="{{ topic.id }}" id="topic{{ topic.id }}">
+                                    <label class="form-check-label" for="topic{{ topic.id }}">
+                                        {{ topic.topic_name }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text">Selecciona los temas para los que quieres generar resúmenes</div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">
+                                    Seleccionar todos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
+                                    Deseleccionar todos
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="course" class="form-label">Curso</label>
+                            <select class="form-select" id="course" name="course">
+                                <option value="1º ESO">1º ESO</option>
+                                <option value="2º ESO">2º ESO</option>
+                                <option value="3º ESO" selected>3º ESO</option>
+                                <option value="4º ESO">4º ESO</option>
+                                <option value="1º Bachillerato">1º Bachillerato</option>
+                                <option value="2º Bachillerato">2º Bachillerato</option>
+                            </select>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Nota:</strong> Los resúmenes generados tendrán estado "Pendiente de validación".
+                            Podrás revisarlos y editarlos antes de validarlos. Solo se generará un resumen por tema.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
+                                <i class="bi bi-cpu"></i> Generar Resúmenes
+                            </button>
+                            <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Progress Section (hidden initially) -->
+            <div id="progressSection" class="card mt-4" style="display: none;">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-hourglass-split"></i> Generando...</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress" style="height: 30px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    <p class="text-center mt-3" id="progressText">Iniciando generación...</p>
+                </div>
+            </div>
+
+            <!-- Results Section (hidden initially) -->
+            <div id="resultsSection" class="card mt-4" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-check-circle"></i> Resúmenes Generados</h5>
+                </div>
+                <div class="card-body">
+                    <p id="resultsMessage"></p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('teacher.summaries') }}?status=pending_validation" class="btn btn-primary">
+                            <i class="bi bi-eye"></i> Ver Resúmenes Generados
+                        </a>
+                        <button class="btn btn-secondary" onclick="location.reload()">
+                            <i class="bi bi-arrow-repeat"></i> Generar Más Resúmenes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectAll() {
+    document.querySelectorAll('.topic-checkbox').forEach(cb => cb.checked = true);
+}
+
+function deselectAll() {
+    document.querySelectorAll('.topic-checkbox').forEach(cb => cb.checked = false);
+}
+
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const selectedTopics = Array.from(document.querySelectorAll('.topic-checkbox:checked'))
+        .map(cb => parseInt(cb.value));
+
+    if (selectedTopics.length === 0) {
+        alert('Por favor selecciona al menos un tema');
+        return;
+    }
+
+    const formData = {
+        topic_ids: selectedTopics,
+        course: document.getElementById('course').value
+    };
+
+    // Show progress
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('generateBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generando...';
+
+    // Simulate progress
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += 5;
+        if (progress <= 90) {
+            updateProgress(progress, `Generando resúmenes...`);
+        }
+    }, 500);
+
+    // Make request
+    fetch('/teacher/generate-summaries', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        updateProgress(100, 'Completado');
+
+        if (data.success) {
+            setTimeout(() => {
+                document.getElementById('progressSection').style.display = 'none';
+                document.getElementById('resultsSection').style.display = 'block';
+                document.getElementById('resultsMessage').innerHTML = `
+                    <p class="lead"><i class="bi bi-check-circle-fill text-success"></i> ${data.message}</p>
+                    <p>Los resúmenes están listos para ser revisados y validados.</p>
+                `;
+            }, 500);
+        } else {
+            alert('Error: ' + data.message);
+            document.getElementById('generateBtn').disabled = false;
+            document.getElementById('generateBtn').innerHTML = '<i class="bi bi-cpu"></i> Generar Resúmenes';
+            document.getElementById('progressSection').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        console.error('Error:', error);
+        alert('Error al generar resúmenes: ' + error.message);
+        document.getElementById('generateBtn').disabled = false;
+        document.getElementById('generateBtn').innerHTML = '<i class="bi bi-cpu"></i> Generar Resúmenes';
+        document.getElementById('progressSection').style.display = 'none';
+    });
+});
+
+function updateProgress(percentage, text) {
+    const progressBar = document.getElementById('progressBar');
+    progressBar.style.width = percentage + '%';
+    progressBar.textContent = percentage + '%';
+    document.getElementById('progressText').textContent = text;
+}
+</script>
+{% endblock %}

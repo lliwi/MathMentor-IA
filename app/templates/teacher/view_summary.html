@@ -1,0 +1,380 @@
+{% extends "base/base.html" %}
+
+{% block title %}Resumen #{{ summary.id }} - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>
+                <i class="bi bi-book-fill"></i> Resumen #{{ summary.id }}
+                {% if summary.status == 'validated' %}
+                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Validado</span>
+                {% elif summary.status == 'pending_validation' %}
+                <span class="badge bg-warning"><i class="bi bi-clock"></i> Pendiente</span>
+                {% elif summary.status == 'teacher_created' %}
+                <span class="badge bg-primary"><i class="bi bi-person-fill"></i> Creado</span>
+                {% else %}
+                <span class="badge bg-info"><i class="bi bi-robot"></i> Auto-generado</span>
+                {% endif %}
+            </h1>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('teacher.summaries') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Content Section -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-text"></i> Contenido</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editContent()">
+                        <i class="bi bi-pencil"></i> Editar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="content-display">
+                        <div id="markdown-content" class="markdown-content"></div>
+                    </div>
+                    <div id="content-edit" style="display: none;">
+                        <textarea id="content-textarea" class="form-control" rows="15">{{ summary.content }}</textarea>
+                        <div class="mt-3">
+                            <button class="btn btn-success" onclick="saveContent()">
+                                <i class="bi bi-save"></i> Guardar
+                            </button>
+                            <button class="btn btn-secondary" onclick="cancelEdit()">
+                                <i class="bi bi-x"></i> Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modification Notes -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-sticky"></i> Notas de Modificación</h5>
+                </div>
+                <div class="card-body">
+                    <textarea id="modification-notes" class="form-control" rows="3" placeholder="Describe los cambios realizados...">{{ summary.modification_notes or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Info Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información</h5>
+                </div>
+                <div class="card-body">
+                    <dl>
+                        <dt>Tema:</dt>
+                        <dd><span class="badge bg-info">{{ topic.topic_name }}</span></dd>
+
+                        <dt>Generado:</dt>
+                        <dd>{{ summary.generated_at.strftime('%d/%m/%Y %H:%M') if summary.generated_at else 'N/A' }}</dd>
+
+                        {% if summary.created_by %}
+                        <dt>Creado/Modificado por:</dt>
+                        <dd>{{ summary.created_by.username }}</dd>
+                        {% endif %}
+
+                        {% if summary.validated_by %}
+                        <dt>Validado por:</dt>
+                        <dd>{{ summary.validated_by.username }}</dd>
+                        <dt>Fecha validación:</dt>
+                        <dd>{{ summary.validated_at.strftime('%d/%m/%Y %H:%M') if summary.validated_at else 'N/A' }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Statistics Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-graph-up"></i> Estadísticas</h5>
+                </div>
+                <div class="card-body">
+                    <dl>
+                        <dt>Estudiantes que compraron:</dt>
+                        <dd><span class="badge bg-primary">{{ usage_count }}</span></dd>
+
+                        <dt>Total de accesos:</dt>
+                        <dd><span class="badge bg-success">{{ total_accesses }}</span></dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Acciones</h5>
+                </div>
+                <div class="card-body">
+                    {% if summary.status != 'validated' %}
+                    <button class="btn btn-success w-100 mb-2" onclick="validateSummary()">
+                        <i class="bi bi-check-circle"></i> Validar Resumen
+                    </button>
+                    {% endif %}
+
+                    <button class="btn btn-primary w-100 mb-2" onclick="saveChanges()">
+                        <i class="bi bi-save"></i> Guardar Cambios
+                    </button>
+
+                    <button class="btn btn-danger w-100" onclick="deleteSummary()">
+                        <i class="bi bi-trash"></i> Eliminar Resumen
+                    </button>
+
+                    {% if usage_count > 0 %}
+                    <small class="text-danger mt-2 d-block">
+                        <i class="bi bi-exclamation-triangle"></i> Este resumen ha sido comprado {{ usage_count }} veces.
+                        Al eliminarlo se borrarán también todos los registros de acceso.
+                    </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const summaryId = {{ summary.id }};
+
+function editContent() {
+    document.getElementById('content-display').style.display = 'none';
+    document.getElementById('content-edit').style.display = 'block';
+}
+
+function cancelEdit() {
+    document.getElementById('content-display').style.display = 'block';
+    document.getElementById('content-edit').style.display = 'none';
+}
+
+function saveContent() {
+    const content = document.getElementById('content-textarea').value;
+    const notes = document.getElementById('modification-notes').value;
+
+    fetch(`/teacher/summary/${summaryId}/edit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            content: content,
+            modification_notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error al guardar: ' + error);
+    });
+}
+
+function saveChanges() {
+    const notes = document.getElementById('modification-notes').value;
+
+    fetch(`/teacher/summary/${summaryId}/edit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            modification_notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error al guardar: ' + error);
+    });
+}
+
+function validateSummary() {
+    if (!confirm('¿Estás seguro de que quieres validar este resumen?')) {
+        return;
+    }
+
+    fetch(`/teacher/summary/${summaryId}/validate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error al validar: ' + error);
+    });
+}
+
+function deleteSummary() {
+    const usageCount = {{ usage_count }};
+    const message = usageCount > 0
+        ? `¿Estás seguro de que quieres eliminar este resumen?\n\nEsto eliminará también ${usageCount} registros de acceso de estudiantes.`
+        : '¿Estás seguro de que quieres eliminar este resumen?';
+
+    if (!confirm(message)) {
+        return;
+    }
+
+    fetch(`/teacher/summary/${summaryId}/delete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = '{{ url_for("teacher.summaries") }}';
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error al eliminar: ' + error);
+    });
+}
+
+// Render Markdown content on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const markdownContent = {{ summary.content|tojson|safe }};
+    const renderedHtml = marked.parse(markdownContent);
+    document.getElementById('markdown-content').innerHTML = renderedHtml;
+
+    // Render LaTeX if MathJax is available
+    if (typeof MathJax !== 'undefined') {
+        MathJax.typesetPromise([document.getElementById('markdown-content')])
+            .catch((err) => console.log('MathJax error:', err));
+    }
+});
+</script>
+
+<!-- Marked.js for Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+.markdown-content {
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.markdown-content h1 {
+    font-size: 2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: #0d6efd;
+    border-bottom: 2px solid #0d6efd;
+    padding-bottom: 0.5rem;
+}
+
+.markdown-content h2 {
+    font-size: 1.5rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+    color: #198754;
+}
+
+.markdown-content h3 {
+    font-size: 1.25rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #0dcaf0;
+}
+
+.markdown-content code {
+    background-color: #f8f9fa;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 90%;
+    color: #d63384;
+}
+
+.markdown-content pre {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 5px;
+    overflow-x: auto;
+    border-left: 4px solid #0d6efd;
+}
+
+.markdown-content pre code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+.markdown-content ul, .markdown-content ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.markdown-content li {
+    margin-bottom: 0.5rem;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid #ffc107;
+    padding-left: 1rem;
+    margin-left: 0;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.markdown-content table {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+}
+
+.markdown-content table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.markdown-content strong {
+    color: #212529;
+    font-weight: 600;
+}
+
+.markdown-content em {
+    color: #495057;
+}
+</style>
+{% endblock %}

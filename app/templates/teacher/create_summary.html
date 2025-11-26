@@ -1,0 +1,157 @@
+{% extends "base/base.html" %}
+
+{% block title %}Crear Resumen - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h1 class="mb-4">
+                <i class="bi bi-plus-circle"></i> Crear Resumen Manualmente
+            </h1>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Nuevo Resumen</h5>
+                </div>
+                <div class="card-body">
+                    <form id="createForm">
+                        <div class="mb-3">
+                            <label for="topic" class="form-label">Tema *</label>
+                            <select class="form-select" id="topic" name="topic_id" required>
+                                <option value="">Selecciona un tema</option>
+                                {% for topic in topics %}
+                                <option value="{{ topic.id }}">{{ topic.topic_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Selecciona el tema para este resumen (solo un resumen por tema)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Contenido del Resumen *</label>
+                            <textarea class="form-control" id="content" name="content" rows="20" required
+                                      placeholder="Escribe el contenido del resumen aquí...
+
+Puedes usar Markdown para formato:
+- **negrita**
+- *cursiva*
+- # Títulos
+- - Listas
+- Fórmulas LaTeX: $x^2 + y^2 = z^2$
+
+Ejemplo de estructura:
+
+# Conceptos Clave
+
+## Definición
+...
+
+## Fórmulas Importantes
+- $E = mc^2$
+- $a^2 + b^2 = c^2$
+
+## Ejemplos
+...
+
+## Consejos y Trucos
+..."></textarea>
+                            <div class="form-text">Utiliza formato Markdown. Puedes incluir fórmulas LaTeX.</div>
+                        </div>
+
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i>
+                            <strong>Nota:</strong> Los resúmenes creados manualmente se marcan como "Creados por profesor"
+                            y se validan automáticamente, quedando disponibles inmediatamente para los estudiantes.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="createBtn">
+                                <i class="bi bi-plus-circle"></i> Crear Resumen
+                            </button>
+                            <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Success Section (hidden initially) -->
+            <div id="successSection" class="card mt-4" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-check-circle"></i> Resumen Creado</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">El resumen se ha creado correctamente y está validado automáticamente.</p>
+                    <div class="d-grid gap-2">
+                        <a href="#" id="viewSummaryBtn" class="btn btn-primary">
+                            <i class="bi bi-eye"></i> Ver Resumen
+                        </a>
+                        <button class="btn btn-secondary" onclick="location.reload()">
+                            <i class="bi bi-plus"></i> Crear Otro Resumen
+                        </button>
+                        <a href="{{ url_for('teacher.summaries') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-list"></i> Ver Todos los Resúmenes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('createForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = {
+        topic_id: parseInt(document.getElementById('topic').value),
+        content: document.getElementById('content').value
+    };
+
+    // Validate
+    if (!formData.topic_id) {
+        alert('Por favor selecciona un tema');
+        return;
+    }
+
+    if (!formData.content || formData.content.trim() === '') {
+        alert('Por favor escribe el contenido del resumen');
+        return;
+    }
+
+    // Disable button and show loading
+    const createBtn = document.getElementById('createBtn');
+    createBtn.disabled = true;
+    createBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creando...';
+
+    // Make request
+    fetch('/teacher/create-summary', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Hide form, show success
+            document.getElementById('createForm').parentElement.parentElement.style.display = 'none';
+            document.getElementById('successSection').style.display = 'block';
+            document.getElementById('viewSummaryBtn').href = `/teacher/summary/${data.summary_id}`;
+        } else {
+            alert('Error: ' + data.message);
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Crear Resumen';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al crear resumen: ' + error.message);
+        createBtn.disabled = false;
+        createBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Crear Resumen';
+    });
+});
+</script>
+{% endblock %}

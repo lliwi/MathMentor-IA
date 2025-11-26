@@ -10,6 +10,8 @@ from app.models.exercise_usage import ExerciseUsage
 from app.models.submission import Submission
 from app.models.student_score import StudentScore
 from app.models.document_embedding import DocumentEmbedding
+from app.models.summary import Summary
+from app.models.summary_usage import SummaryUsage
 
 __all__ = [
     'User',
@@ -20,5 +22,7 @@ __all__ = [
     'ExerciseUsage',
     'Submission',
     'StudentScore',
-    'DocumentEmbedding'
+    'DocumentEmbedding',
+    'Summary',
+    'SummaryUsage'
 ]

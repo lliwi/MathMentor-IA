@@ -1,0 +1,120 @@
+{% extends "base/base.html" %}
+
+{% block title %}Banco de Resúmenes - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">
+        <i class="bi bi-book-fill"></i> Banco de Resúmenes
+    </h1>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{{ url_for('teacher.summaries') }}" class="row g-3">
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Estado</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Todos</option>
+                        <option value="validated" {% if status_filter == 'validated' %}selected{% endif %}>Validados</option>
+                        <option value="pending_validation" {% if status_filter == 'pending_validation' %}selected{% endif %}>Pendientes</option>
+                        <option value="auto_generated" {% if status_filter == 'auto_generated' %}selected{% endif %}>Auto-generados</option>
+                        <option value="teacher_created" {% if status_filter == 'teacher_created' %}selected{% endif %}>Creados por profesor</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="topic" class="form-label">Tema</label>
+                    <select class="form-select" id="topic" name="topic">
+                        <option value="">Todos</option>
+                        {% for topic in topics %}
+                        <option value="{{ topic.id }}" {% if topic_filter == topic.id %}selected{% endif %}>
+                            {{ topic.topic_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('teacher.summaries') }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summaries List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-list"></i> Resúmenes
+                <span class="badge bg-primary">{{ summaries|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if summaries %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tema</th>
+                            <th>Preview</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for summary in summaries %}
+                        <tr>
+                            <td>{{ summary.id }}</td>
+                            <td>
+                                {% if summary.topic %}
+                                <span class="badge bg-info">{{ summary.topic.topic_name }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {{ summary.content[:100] }}{% if summary.content|length > 100 %}...{% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if summary.status == 'validated' %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Validado</span>
+                                {% elif summary.status == 'pending_validation' %}
+                                <span class="badge bg-warning"><i class="bi bi-clock"></i> Pendiente</span>
+                                {% elif summary.status == 'teacher_created' %}
+                                <span class="badge bg-primary"><i class="bi bi-person-fill"></i> Creado</span>
+                                {% else %}
+                                <span class="badge bg-info"><i class="bi bi-robot"></i> Auto-generado</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ summary.generated_at.strftime('%d/%m/%Y %H:%M') if summary.generated_at else 'N/A' }}</td>
+                            <td>
+                                <a href="{{ url_for('teacher.view_summary', summary_id=summary.id) }}"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i> Ver/Editar
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle"></i> No hay resúmenes que coincidan con los filtros seleccionados.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
