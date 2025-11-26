@@ -1,11 +1,11 @@
 {% extends "base/base.html" %}
 
-{% block title %}Añadir Canal YouTube - MathMentor IA{% endblock %}
+{% block title %}Actualizar Canal YouTube - MathMentor IA{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-10 offset-md-1">
-        <h2 class="mb-4"><i class="bi bi-youtube"></i> Añadir Canal de YouTube</h2>
+        <h2 class="mb-4"><i class="bi bi-arrow-clockwise"></i> Actualizar Canal de YouTube</h2>
 
         <div class="card">
             <div class="card-body">
@@ -14,14 +14,17 @@
 
                     <!-- Step 1: Channel URL and Course/Subject -->
                     <div id="step1">
-                        <h4 class="mb-3">Paso 1: Información del Canal</h4>
+                        <h4 class="mb-3">Información del Canal</h4>
+                        <div class="alert alert-success mb-3">
+                            <i class="bi bi-info-circle"></i> Este canal ya está configurado. Los campos se han rellenado automáticamente. Haz clic en <strong>"Buscar Nuevos Videos"</strong> para encontrar videos que aún no han sido importados.
+                        </div>
 
                         <div class="mb-3">
                             {{ form.channel_url.label(class="form-label") }}
                             <div class="input-group">
                                 {{ form.channel_url(class="form-control", id="channelUrlInput") }}
                                 <button type="button" class="btn btn-danger" id="loadVideosBtn">
-                                    <i class="bi bi-search"></i> Cargar Videos
+                                    <i class="bi bi-search"></i> Buscar Nuevos Videos
                                 </button>
                             </div>
                             <small class="text-muted">Ejemplo: https://www.youtube.com/@nombrecanal</small>
@@ -64,11 +67,12 @@
                     <!-- Step 2: Video Selection (Initially Hidden) -->
                     <div id="step2" style="display: none;">
                         <hr class="my-4">
-                        <h4 class="mb-3">Paso 2: Seleccionar Videos</h4>
+                        <h4 class="mb-3">Seleccionar Videos Nuevos</h4>
 
                         <div id="channelInfo" class="alert alert-info mb-3" style="display: none;">
                             <h5><i class="bi bi-youtube"></i> <span id="channelName"></span></h5>
-                            <p class="mb-0"><strong>Total de videos:</strong> <span id="totalVideos">0</span></p>
+                            <p class="mb-1"><strong>Videos ya importados:</strong> <span id="existingVideos">0</span></p>
+                            <p class="mb-0"><strong>Videos nuevos encontrados:</strong> <span id="totalVideos">0</span> <span id="loadTime"></span></p>
                         </div>
 
                         <div class="mb-3">
@@ -96,7 +100,7 @@
                         <div class="spinner-border text-danger" role="status">
                             <span class="visually-hidden">Cargando...</span>
                         </div>
-                        <p class="mt-2">Cargando videos del canal...</p>
+                        <p class="mt-2">Buscando videos nuevos en el canal...</p>
                         <small class="text-muted">Esto puede tardar varios segundos...</small>
                         <p class="mt-2"><small id="loadingTime" class="text-muted"></small></p>
                     </div>
@@ -116,14 +120,15 @@
         </div>
 
         <div class="alert alert-info mt-4">
-            <h5><i class="bi bi-info-circle"></i> Cómo funciona:</h5>
+            <h5><i class="bi bi-info-circle"></i> Cómo funciona la actualización:</h5>
             <ol>
-                <li>Ingresa la URL del canal de YouTube y los datos del curso</li>
-                <li>Haz clic en <strong>"Cargar Videos"</strong> para ver todos los videos del canal</li>
-                <li>Selecciona los videos que deseas importar (puedes usar "Seleccionar Todos")</li>
+                <li>Los datos del canal ya están configurados (URL, curso, materia)</li>
+                <li>Haz clic en <strong>"Buscar Nuevos Videos"</strong> para verificar si hay videos nuevos</li>
+                <li>El sistema mostrará solo los videos que aún NO han sido importados</li>
+                <li>Selecciona los videos nuevos que deseas añadir (puedes usar "Seleccionar Todos")</li>
                 <li>Haz clic en <strong>"Importar Videos Seleccionados"</strong></li>
                 <li>Se extraerán las transcripciones y se generarán embeddings para RAG</li>
-                <li>Cada video se creará como un tema independiente para asignar a estudiantes</li>
+                <li>Cada video nuevo se creará como un tema independiente para asignar a estudiantes</li>
             </ol>
             <p class="mb-0">
                 <i class="bi bi-info-circle-fill text-primary"></i>
@@ -145,6 +150,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const channelInfo = document.getElementById('channelInfo');
     const channelName = document.getElementById('channelName');
     const totalVideos = document.getElementById('totalVideos');
+    const existingVideos = document.getElementById('existingVideos');
+    const loadTime = document.getElementById('loadTime');
     const selectedCount = document.getElementById('selectedCount');
     const selectAllBtn = document.getElementById('selectAllBtn');
     const deselectAllBtn = document.getElementById('deselectAllBtn');
@@ -196,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const csrfToken = csrfTokenInput.value;
-        const fetchUrl = '{{ url_for("admin.fetch_youtube_videos") }}';
+        const fetchUrl = '{{ url_for("admin.fetch_new_youtube_videos", channel_id=channel.id) }}';
 
         // Fetch videos via AJAX
         fetch(fetchUrl, {
@@ -231,9 +238,18 @@ document.addEventListener('DOMContentLoaded', function() {
             videosData = data.videos;
 
             // Show channel info with loading time
-            channelName.textContent = data.channel_info.channel_name;
-            totalVideos.textContent = `${data.total_videos} (cargados en ${totalTime}s)`;
+            channelName.textContent = '{{ channel.channel_name }}';
+            existingVideos.textContent = data.existing_videos || 0;
+            totalVideos.textContent = data.total_videos;
+            loadTime.textContent = `(cargados en ${totalTime}s)`;
             channelInfo.style.display = 'block';
+
+            // Check if there are new videos
+            if (data.total_videos === 0) {
+                videosList.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> <strong>¡Perfecto!</strong> No hay videos nuevos. Todos los videos del canal ya han sido importados.</div>';
+                step2.style.display = 'block';
+                return;
+            }
 
             // Render videos list
             renderVideosList(data.videos);
@@ -337,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (selectedIds.length === 0) {
             e.preventDefault();
-            showError('Debes seleccionar al menos un video para importar');
+            showError('Debes seleccionar al menos un video nuevo para importar');
             return false;
         }
     });

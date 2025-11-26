@@ -3,6 +3,7 @@ Admin routes
 """
 import os
 import sys
+import json
 from werkzeug.utils import secure_filename
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
@@ -251,13 +252,17 @@ def upload_youtube():
                 flash(f'El canal "{channel_info["channel_name"]}" ya está agregado', 'warning')
                 return redirect(url_for('admin.content'))
 
-            # Determine video limit
-            video_limit = None
-            if form.video_selection.data == 'limit':
-                video_limit = form.video_limit.data
-                if not video_limit or video_limit <= 0:
-                    flash('Debe especificar un número válido de videos', 'error')
-                    return render_template('admin/upload_youtube.html', form=form)
+            # Get selected videos from hidden field
+            selected_videos_json = request.form.get('selected_videos', '[]')
+            try:
+                selected_video_ids = json.loads(selected_videos_json)
+            except json.JSONDecodeError:
+                selected_video_ids = []
+
+            # Validate that at least one video is selected
+            if not selected_video_ids:
+                flash('Debe seleccionar al menos un video para importar', 'error')
+                return render_template('admin/upload_youtube.html', form=form)
 
             # Create channel record
             channel = YouTubeChannel(
@@ -272,14 +277,14 @@ def upload_youtube():
             db.session.add(channel)
             db.session.commit()
 
-            flash(f'Canal "{channel.channel_name}" agregado exitosamente. Procesando videos...', 'success')
+            flash(f'Canal "{channel.channel_name}" agregado exitosamente. Procesando {len(selected_video_ids)} videos...', 'success')
 
-            # Process channel videos
+            # Process selected videos
             try:
-                stats = YouTubeService.process_youtube_channel(channel.id, video_limit=video_limit)
+                stats = YouTubeService.process_selected_videos(channel.id, selected_video_ids)
 
                 flash(f'Canal procesado: {stats["videos_processed"]} videos procesados, '
-                      f'{stats["videos_skipped"]} sin transcripción, '
+                      f'{stats["videos_skipped"]} sin transcripción o ya existentes, '
                       f'{stats["topics_created"]} temas creados', 'success')
 
             except Exception as e:
@@ -292,6 +297,149 @@ def upload_youtube():
             db.session.rollback()
 
     return render_template('admin/upload_youtube.html', form=form)
+
+
+@admin_bp.route('/content/youtube/fetch-videos', methods=['POST'])
+@admin_required
+def fetch_youtube_videos():
+    """AJAX endpoint to fetch videos from a YouTube channel"""
+    try:
+        channel_url = request.json.get('channel_url')
+
+        if not channel_url:
+            return jsonify({'error': 'URL del canal requerida'}), 400
+
+        # Extract channel information
+        channel_info = YouTubeService.extract_channel_info(channel_url)
+
+        # Get all videos from the channel
+        videos = YouTubeService.get_channel_videos(channel_url)
+
+        # Format video data for frontend
+        videos_data = []
+        for video in videos:
+            # Format duration
+            duration_minutes = video['duration'] // 60
+            duration_seconds = video['duration'] % 60
+            duration_str = f"{duration_minutes}:{duration_seconds:02d}"
+
+            # Format date
+            date_str = video['published_at'].strftime('%Y-%m-%d') if video['published_at'] else 'Desconocida'
+
+            videos_data.append({
+                'video_id': video['video_id'],
+                'title': video['title'],
+                'url': video['url'],
+                'duration': duration_str,
+                'published_at': date_str
+            })
+
+        return jsonify({
+            'success': True,
+            'channel_info': channel_info,
+            'videos': videos_data,
+            'total_videos': len(videos_data)
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/content/youtube/<int:channel_id>/update', methods=['GET', 'POST'])
+@admin_required
+def update_youtube_channel(channel_id):
+    """Update an existing YouTube channel with new videos"""
+    channel = YouTubeChannel.query.get_or_404(channel_id)
+    form = AddYouTubeChannelForm()
+
+    # Pre-fill form with existing channel data
+    if request.method == 'GET':
+        form.channel_url.data = channel.channel_url
+        form.course.data = channel.course
+        form.subject.data = channel.subject
+
+    if form.validate_on_submit():
+        try:
+            # Get selected videos from hidden field
+            selected_videos_json = request.form.get('selected_videos', '[]')
+            try:
+                selected_video_ids = json.loads(selected_videos_json)
+            except json.JSONDecodeError:
+                selected_video_ids = []
+
+            # Validate that at least one video is selected
+            if not selected_video_ids:
+                flash('Debe seleccionar al menos un video para importar', 'error')
+                return render_template('admin/update_youtube.html', form=form, channel=channel)
+
+            # Process selected videos (reuse existing logic)
+            try:
+                stats = YouTubeService.process_selected_videos(channel.id, selected_video_ids)
+
+                flash(f'Canal actualizado: {stats["videos_processed"]} videos nuevos procesados, '
+                      f'{stats["videos_skipped"]} omitidos, '
+                      f'{stats["topics_created"]} temas creados', 'success')
+
+            except Exception as e:
+                flash(f'Error al actualizar el canal: {str(e)}', 'warning')
+
+            return redirect(url_for('admin.content'))
+
+        except Exception as e:
+            flash(f'Error al actualizar el canal: {str(e)}', 'error')
+            db.session.rollback()
+
+    return render_template('admin/update_youtube.html', form=form, channel=channel)
+
+
+@admin_bp.route('/content/youtube/<int:channel_id>/fetch-new-videos', methods=['POST'])
+@admin_required
+def fetch_new_youtube_videos(channel_id):
+    """AJAX endpoint to fetch only new videos from an existing YouTube channel"""
+    try:
+        channel = YouTubeChannel.query.get_or_404(channel_id)
+
+        # Get all videos from the channel
+        all_videos = YouTubeService.get_channel_videos(channel.channel_url)
+
+        # Get existing video IDs from database
+        existing_video_ids = {v.video_id for v in channel.videos.all()}
+
+        # Filter only new videos (not in database)
+        new_videos = [v for v in all_videos if v['video_id'] not in existing_video_ids]
+
+        # Format video data for frontend
+        videos_data = []
+        for video in new_videos:
+            # Format duration
+            duration_minutes = video['duration'] // 60
+            duration_seconds = video['duration'] % 60
+            duration_str = f"{duration_minutes}:{duration_seconds:02d}"
+
+            # Format date
+            date_str = video['published_at'].strftime('%Y-%m-%d') if video['published_at'] else 'Desconocida'
+
+            videos_data.append({
+                'video_id': video['video_id'],
+                'title': video['title'],
+                'url': video['url'],
+                'duration': duration_str,
+                'published_at': date_str
+            })
+
+        return jsonify({
+            'success': True,
+            'channel_info': {
+                'channel_name': channel.channel_name,
+                'channel_id': channel.channel_id
+            },
+            'videos': videos_data,
+            'total_videos': len(videos_data),
+            'existing_videos': len(existing_video_ids)
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @admin_bp.route('/content/youtube/<int:channel_id>/delete', methods=['POST'])

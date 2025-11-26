@@ -107,14 +107,4 @@ class AddYouTubeChannelForm(FlaskForm):
                          default="Matemáticas",
                          render_kw={"placeholder": "Matemáticas"})
 
-    video_selection = RadioField('Selección de Videos',
-                                choices=[('all', 'Todos los videos del canal'),
-                                        ('limit', 'Últimos X videos')],
-                                default='all',
-                                validators=[DataRequired()])
-
-    video_limit = IntegerField('Número de Videos',
-                              validators=[Optional(), NumberRange(min=1, max=100)],
-                              render_kw={"placeholder": "Ej: 20"})
-
-    submit = SubmitField('Añadir Canal y Procesar')
+    submit = SubmitField('Importar Videos Seleccionados')

@@ -131,6 +131,9 @@
                         <a href="{{ channel.channel_url }}" target="_blank" class="btn btn-outline-danger btn-sm">
                             <i class="bi bi-box-arrow-up-right"></i> Ver Canal
                         </a>
+                        <a href="{{ url_for('admin.update_youtube_channel', channel_id=channel.id) }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-arrow-clockwise"></i> Actualizar
+                        </a>
                         <form method="POST" action="{{ url_for('admin.delete_youtube_channel', channel_id=channel.id) }}"
                               onsubmit="return confirm('¿Estás seguro de que deseas eliminar este canal? Esta acción eliminará también todos los videos, temas y embeddings relacionados.');"
                               style="display: inline;">

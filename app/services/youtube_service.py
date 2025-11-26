@@ -88,7 +88,7 @@ class YouTubeService:
     @staticmethod
     def get_channel_videos(channel_url: str, limit: Optional[int] = None) -> List[Dict]:
         """
-        Get list of videos from a YouTube channel
+        Get list of videos from a YouTube channel (optimized version)
 
         Args:
             channel_url: URL of the YouTube channel
@@ -101,34 +101,51 @@ class YouTubeService:
             # Normalize URL to channel/ID format
             normalized_url = YouTubeService.normalize_channel_url(channel_url)
 
+            print(f"[YouTubeService] Obteniendo lista de videos del canal (optimizado)...")
             channel = Channel(normalized_url)
             videos = []
 
             # Get video objects (pytubefix 10.x returns YouTube objects, not URLs)
+            # This is fast - just gets the video IDs
             video_objects = list(channel.videos)
+            print(f"[YouTubeService] Encontrados {len(video_objects)} videos en el canal")
 
             # Apply limit if specified
             if limit:
                 video_objects = video_objects[:limit]
 
-            # Extract metadata for each video
-            for yt in video_objects:
+            # Extract metadata for each video - OPTIMIZED to skip unavailable videos fast
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            def get_video_info(yt):
                 try:
-                    # yt is already a YouTube object in pytubefix 10.x
                     video_id = yt.video_id
                     video_url = f'https://www.youtube.com/watch?v={video_id}'
 
-                    videos.append({
-                        'video_id': video_id,
-                        'title': yt.title,
-                        'url': video_url,
-                        'duration': yt.length,  # in seconds
-                        'published_at': yt.publish_date,
-                    })
-                except Exception as e:
-                    print(f"[YouTubeService] Error al procesar video ID {getattr(yt, 'video_id', 'unknown')}: {str(e)}")
-                    continue
+                    # Try to get basic info - if video is unavailable, this will fail fast
+                    title = yt.title  # This triggers metadata fetch
 
+                    return {
+                        'video_id': video_id,
+                        'title': title,
+                        'url': video_url,
+                        'duration': getattr(yt, 'length', 0),
+                        'published_at': getattr(yt, 'publish_date', None),
+                    }
+                except Exception as e:
+                    # Skip unavailable videos silently
+                    return None
+
+            # Process videos in parallel for speed (max 10 threads)
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = {executor.submit(get_video_info, yt): yt for yt in video_objects}
+
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result:
+                        videos.append(result)
+
+            print(f"[YouTubeService] Cargados {len(videos)} videos válidos de {len(video_objects)} totales")
             return videos
 
         except Exception as e:
@@ -425,6 +442,114 @@ class YouTubeService:
             existing_video = YouTubeVideo.query.filter_by(video_id=video_id).first()
             if existing_video:
                 print(f"[YouTubeService] Video {video_id} ya existe, omitiendo...")
+                continue
+
+            # Extract transcript
+            transcript = YouTubeService.extract_video_transcript(video_id)
+
+            if not transcript:
+                # Create video record but mark as no transcript
+                video = YouTubeVideo(
+                    channel_id=channel.id,
+                    video_id=video_id,
+                    title=video_data['title'],
+                    url=video_data['url'],
+                    duration=video_data['duration'],
+                    published_at=video_data['published_at'],
+                    transcript_available=False
+                )
+                db.session.add(video)
+                videos_skipped += 1
+                print(f"[YouTubeService] Video {video_id} sin transcripción, omitido")
+                continue
+
+            # Create video record
+            video = YouTubeVideo(
+                channel_id=channel.id,
+                video_id=video_id,
+                title=video_data['title'],
+                url=video_data['url'],
+                duration=video_data['duration'],
+                published_at=video_data['published_at'],
+                transcript_available=True
+            )
+            db.session.add(video)
+            db.session.flush()  # Get video.id
+
+            # Chunk transcript
+            chunks = YouTubeService.chunk_transcript(transcript)
+
+            # Store in RAG
+            rag_service.store_video_chunks(channel.id, video_id, chunks)
+
+            # Create topic automatically (1 video = 1 topic)
+            topic_description = chunks[0]['text'][:200] if chunks else ''
+            topic = Topic(
+                source_type='youtube_video',
+                video_id=video.id,
+                topic_name=video.title,
+                description=topic_description,
+                order=videos_processed
+            )
+            db.session.add(topic)
+
+            videos_processed += 1
+            topics_created += 1
+
+            print(f"[YouTubeService] Video procesado: {video.title}")
+
+        # Update channel status
+        channel.video_count = videos_processed + videos_skipped
+        channel.processed = True
+        db.session.commit()
+
+        return {
+            'videos_processed': videos_processed,
+            'videos_skipped': videos_skipped,
+            'topics_created': topics_created
+        }
+
+    @staticmethod
+    def process_selected_videos(channel_id: int, selected_video_ids: List[str]) -> Dict:
+        """
+        Process only selected videos from a YouTube channel
+
+        Args:
+            channel_id: Database ID of the YouTubeChannel
+            selected_video_ids: List of YouTube video IDs to process
+
+        Returns:
+            Dict with processing statistics
+        """
+        channel = YouTubeChannel.query.get(channel_id)
+        if not channel:
+            raise Exception("Canal no encontrado")
+
+        print(f"[YouTubeService] Procesando {len(selected_video_ids)} videos seleccionados del canal: {channel.channel_name}")
+
+        # Get all videos from channel to find the selected ones
+        all_videos = YouTubeService.get_channel_videos(channel.channel_url)
+
+        # Filter only selected videos
+        videos_data = [v for v in all_videos if v['video_id'] in selected_video_ids]
+
+        if not videos_data:
+            raise Exception("No se encontraron los videos seleccionados en el canal")
+
+        videos_processed = 0
+        videos_skipped = 0
+        topics_created = 0
+
+        rag_service = RAGService()
+
+        for video_data in videos_data:
+            video_id = video_data['video_id']
+
+            # Check if video already exists
+            existing_video = YouTubeVideo.query.filter_by(video_id=video_id).first()
+            if existing_video:
+                print(f"[YouTubeService] Video {video_id} ya existe, omitiendo...")
+                videos_skipped += 1
                 continue
 
             # Extract transcript
