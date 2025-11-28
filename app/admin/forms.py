@@ -45,10 +45,13 @@ class CreateStudentForm(FlaskForm):
         Length(min=3, max=80, message='El nombre de usuario debe tener entre 3 y 80 caracteres')
     ], render_kw={"placeholder": "usuario_estudiante"})
 
-    email = StringField('Email', validators=[
-        DataRequired(),
+    email = StringField('Email (Opcional)', validators=[
+        Optional(),
         Email(message='Email inválido')
     ], render_kw={"placeholder": "estudiante@email.com"})
+
+    centro = StringField('Centro Educativo (Opcional)', validators=[Optional()],
+                        render_kw={"placeholder": "Ej: IES Miguel de Cervantes"})
 
     password = PasswordField('Contraseña', validators=[
         DataRequired(),
@@ -73,10 +76,13 @@ class EditStudentForm(FlaskForm):
         Length(min=3, max=80, message='El nombre de usuario debe tener entre 3 y 80 caracteres')
     ])
 
-    email = StringField('Email', validators=[
-        DataRequired(),
+    email = StringField('Email (Opcional)', validators=[
+        Optional(),
         Email(message='Email inválido')
     ])
+
+    centro = StringField('Centro Educativo (Opcional)', validators=[Optional()],
+                        render_kw={"placeholder": "Ej: IES Miguel de Cervantes"})
 
     course = StringField('Curso', validators=[Optional()],
                         render_kw={"placeholder": "Ej: 1º ESO, 2º Bachillerato"})

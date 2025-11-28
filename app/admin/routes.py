@@ -525,15 +525,16 @@ def create_student():
                 flash('El nombre de usuario ya existe', 'error')
                 return render_template('admin/create_student.html', form=form)
 
-            # Check if email already exists
-            if User.query.filter_by(email=form.email.data).first():
+            # Check if email already exists (only if provided)
+            if form.email.data and User.query.filter_by(email=form.email.data).first():
                 flash('El email ya está registrado', 'error')
                 return render_template('admin/create_student.html', form=form)
 
             # Create user
             student = User(
                 username=form.username.data,
-                email=form.email.data,
+                email=form.email.data if form.email.data else None,
+                centro=form.centro.data if form.centro.data else None,
                 role='student'
             )
             student.set_password(form.password.data)
@@ -576,9 +577,12 @@ def edit_student(student_id):
 
     form = EditStudentForm(obj=student)
 
-    # Pre-populate course from profile
-    if request.method == 'GET' and student.student_profile:
-        form.course.data = student.student_profile.course
+    # Pre-populate course and centro from profile
+    if request.method == 'GET':
+        if student.student_profile:
+            form.course.data = student.student_profile.course
+        if student.centro:
+            form.centro.data = student.centro
 
     if form.validate_on_submit():
         try:
@@ -588,15 +592,17 @@ def edit_student(student_id):
                 flash('El nombre de usuario ya existe', 'error')
                 return render_template('admin/edit_student.html', form=form, student=student)
 
-            # Check if email is taken by another user
-            existing_email = User.query.filter_by(email=form.email.data).first()
-            if existing_email and existing_email.id != student.id:
-                flash('El email ya está registrado', 'error')
-                return render_template('admin/edit_student.html', form=form, student=student)
+            # Check if email is taken by another user (only if provided)
+            if form.email.data:
+                existing_email = User.query.filter_by(email=form.email.data).first()
+                if existing_email and existing_email.id != student.id:
+                    flash('El email ya está registrado', 'error')
+                    return render_template('admin/edit_student.html', form=form, student=student)
 
             # Update user
             student.username = form.username.data
-            student.email = form.email.data
+            student.email = form.email.data if form.email.data else None
+            student.centro = form.centro.data if form.centro.data else None
 
             # Update password if provided
             if form.password.data:

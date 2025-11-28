@@ -17,6 +17,7 @@
             <tr>
                 <th>Usuario</th>
                 <th>Email</th>
+                <th>Centro</th>
                 <th>Curso</th>
                 <th>Temas Asignados</th>
                 <th>Puntos</th>
@@ -27,7 +28,8 @@
             {% for student in students %}
             <tr>
                 <td>{{ student.username }}</td>
-                <td>{{ student.email }}</td>
+                <td>{{ student.email if student.email else '<span class="text-muted">No especificado</span>' | safe }}</td>
+                <td>{{ student.centro if student.centro else '<span class="text-muted">No especificado</span>' | safe }}</td>
                 <td>
                     {% if student.student_profile %}
                         {{ student.student_profile.course }}

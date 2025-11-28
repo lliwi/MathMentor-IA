@@ -38,6 +38,18 @@
                     </div>
 
                     <div class="mb-3">
+                        {{ form.centro.label(class="form-label") }}
+                        {{ form.centro(class="form-control" + (" is-invalid" if form.centro.errors else "")) }}
+                        {% if form.centro.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.centro.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
                         {{ form.course.label(class="form-label") }}
                         {{ form.course(class="form-control" + (" is-invalid" if form.course.errors else "")) }}
                         {% if form.course.errors %}
