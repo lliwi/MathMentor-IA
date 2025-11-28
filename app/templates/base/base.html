@@ -60,6 +60,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin.ai_config') }}">Configuración IA</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.backups') }}">Backups</a>
+                    </li>
                     {% elif current_user.role == 'teacher' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>

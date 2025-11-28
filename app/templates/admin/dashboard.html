@@ -55,7 +55,7 @@
     </div>
 </div>
 
-<div class="row g-4">
+<div class="row g-4 mb-4">
     <div class="col-md-3">
         <div class="card text-white bg-primary">
             <div class="card-body">
@@ -92,6 +92,18 @@
                 <h5 class="card-title"><i class="bi bi-cpu"></i> Configuración IA</h5>
                 <p class="card-text">Configurar motores de IA y modelos</p>
                 <a href="{{ url_for('admin.ai_config') }}" class="btn btn-light">Configurar IA</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-12">
+        <div class="card text-white bg-dark">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-archive"></i> Gestión de Backups</h5>
+                <p class="card-text">Crear, descargar y restaurar copias de seguridad completas (base de datos + archivos PDF + embeddings RAG)</p>
+                <a href="{{ url_for('admin.backups') }}" class="btn btn-light">Ir a Backups</a>
             </div>
         </div>
     </div>

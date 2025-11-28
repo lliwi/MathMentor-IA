@@ -1,0 +1,198 @@
+{% extends "base/base.html" %}
+
+{% block title %}Gestionar Backups - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-archive"></i> Gestión de Backups</h2>
+    <div class="btn-group" role="group">
+        <form method="POST" action="{{ url_for('admin.create_backup') }}" style="display: inline;">
+            <button type="submit" class="btn btn-success" onclick="return confirm('¿Deseas crear un nuevo backup? Esto puede tardar varios minutos.');">
+                <i class="bi bi-plus-circle"></i> Crear Nuevo Backup
+            </button>
+        </form>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadBackupModal">
+            <i class="bi bi-upload"></i> Subir Backup
+        </button>
+    </div>
+</div>
+
+<!-- Upload Backup Modal -->
+<div class="modal fade" id="uploadBackupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-upload"></i> Subir Backup
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.upload_backup') }}" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Nota:</strong> Solo se aceptan archivos de backup válidos de MathMentor IA (.tar.gz)
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="backup_file" class="form-label">Seleccionar archivo de backup</label>
+                        <input type="file"
+                               class="form-control"
+                               id="backup_file"
+                               name="backup_file"
+                               accept=".tar.gz,.tgz"
+                               required>
+                        <small class="form-text text-muted">
+                            El archivo debe tener el formato: mathmentor_backup_YYYYMMDD_HHMMSS.tar.gz
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Subir Backup</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle"></i>
+    <strong>Información:</strong> Los backups incluyen:
+    <ul class="mb-0 mt-2">
+        <li>Base de datos completa (usuarios, ejercicios, temas, etc.)</li>
+        <li>Embeddings RAG (vectores de pgvector)</li>
+        <li>Archivos PDF subidos</li>
+    </ul>
+</div>
+
+{% if backups %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Archivo</th>
+                <th>Fecha de Creación</th>
+                <th>Tamaño</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for backup in backups %}
+            <tr>
+                <td>
+                    <i class="bi bi-file-earmark-zip"></i>
+                    <code>{{ backup.filename }}</code>
+                </td>
+                <td>{{ backup.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                <td>
+                    <span class="badge bg-secondary">{{ backup.size_mb }} MB</span>
+                </td>
+                <td>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('admin.download_backup', filename=backup.filename) }}"
+                           class="btn btn-sm btn-primary"
+                           title="Descargar backup">
+                            <i class="bi bi-download"></i> Descargar
+                        </a>
+                        
+                        <button type="button"
+                                class="btn btn-sm btn-warning"
+                                data-bs-toggle="modal"
+                                data-bs-target="#restoreModal{{ loop.index }}"
+                                title="Restaurar backup">
+                            <i class="bi bi-arrow-clockwise"></i> Restaurar
+                        </button>
+                        
+                        <form method="POST" action="{{ url_for('admin.delete_backup', filename=backup.filename) }}"
+                              style="display: inline;"
+                              onsubmit="return confirm('¿Estás seguro de que deseas eliminar este backup? Esta acción no se puede deshacer.');">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Eliminar backup">
+                                <i class="bi bi-trash"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            
+            <!-- Restore Confirmation Modal -->
+            <div class="modal fade" id="restoreModal{{ loop.index }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning text-dark">
+                            <h5 class="modal-title">
+                                <i class="bi bi-exclamation-triangle"></i> Confirmar Restauración
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form method="POST" action="{{ url_for('admin.restore_backup', filename=backup.filename) }}">
+                            <div class="modal-body">
+                                <div class="alert alert-danger">
+                                    <strong>¡ADVERTENCIA!</strong> Esta acción:
+                                    <ul class="mb-0 mt-2">
+                                        <li>Eliminará TODOS los datos actuales de la base de datos</li>
+                                        <li>Reemplazará los archivos PDF actuales</li>
+                                        <li>Restaurará el backup: <code>{{ backup.filename }}</code></li>
+                                        <li>Esta acción NO se puede deshacer</li>
+                                    </ul>
+                                </div>
+                                
+                                <p>Para confirmar, escribe <strong>RESTAURAR</strong> en el campo de abajo:</p>
+                                <input type="text" 
+                                       name="confirm" 
+                                       class="form-control" 
+                                       placeholder="Escribe RESTAURAR para confirmar"
+                                       required>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-warning">Restaurar Backup</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-4">
+    <h5>Estadísticas</h5>
+    <p>
+        <strong>Total de backups:</strong> {{ backups|length }}<br>
+        <strong>Espacio total utilizado:</strong> {{ "%.2f"|format(backups|sum(attribute='size_mb')) }} MB
+    </p>
+</div>
+
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No hay backups disponibles. Crea tu primer backup usando el botón "Crear Nuevo Backup".
+</div>
+{% endif %}
+
+<div class="mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="bi bi-question-circle"></i> Información Adicional</h5>
+        </div>
+        <div class="card-body">
+            <h6>¿Cómo usar los backups?</h6>
+            <ol>
+                <li><strong>Crear:</strong> Crea un backup completo de la base de datos y archivos</li>
+                <li><strong>Subir:</strong> Sube un backup descargado previamente al servidor</li>
+                <li><strong>Descargar:</strong> Descarga el archivo .tar.gz a tu ordenador para almacenamiento externo</li>
+                <li><strong>Restaurar:</strong> Restaura la aplicación al estado guardado en el backup (requiere confirmación)</li>
+                <li><strong>Eliminar:</strong> Elimina el backup del servidor (no afecta a los datos actuales)</li>
+            </ol>
+            
+            <h6 class="mt-3">Recomendaciones:</h6>
+            <ul>
+                <li>Crea backups regularmente (semanal o mensualmente)</li>
+                <li>Descarga los backups importantes a tu ordenador</li>
+                <li>Verifica que los backups se han creado correctamente antes de eliminar datos</li>
+                <li>Ten cuidado al restaurar backups, ya que se perderán los datos actuales</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

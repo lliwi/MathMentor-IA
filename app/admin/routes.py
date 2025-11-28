@@ -21,8 +21,9 @@ from app.services.pdf_processor import PDFProcessor
 from app.services.rag_service import RAGService
 from app.services.analytics_service import AnalyticsService
 from app.services.youtube_service import YouTubeService
+from app.services.backup_service import BackupService
 from app.ai_engines.factory import AIEngineFactory
-from flask import Response
+from flask import Response, send_file
 
 
 def admin_required(f):
@@ -950,3 +951,118 @@ def delete_admin(admin_id):
         flash(f'Error al eliminar administrador: {str(e)}', 'error')
 
     return redirect(url_for('admin.admins'))
+
+
+@admin_bp.route('/backups')
+@admin_required
+def backups():
+    """Manage backups"""
+    try:
+        all_backups = BackupService.list_backups()
+        return render_template('admin/backups.html', backups=all_backups)
+    except Exception as e:
+        flash(f'Error al listar backups: {str(e)}', 'error')
+        return render_template('admin/backups.html', backups=[])
+
+
+@admin_bp.route('/backups/create', methods=['POST'])
+@admin_required
+def create_backup():
+    """Create a new backup"""
+    try:
+        backup_info = BackupService.create_backup()
+        flash(f'Backup creado exitosamente: {backup_info["filename"]} ({backup_info["size_mb"]} MB)', 'success')
+    except Exception as e:
+        flash(f'Error al crear backup: {str(e)}', 'error')
+
+    return redirect(url_for('admin.backups'))
+
+
+@admin_bp.route('/backups/upload', methods=['POST'])
+@admin_required
+def upload_backup():
+    """Upload a backup file"""
+    try:
+        # Check if file was uploaded
+        if 'backup_file' not in request.files:
+            flash('No se seleccionó ningún archivo', 'error')
+            return redirect(url_for('admin.backups'))
+
+        file = request.files['backup_file']
+
+        # Check if file has a filename
+        if file.filename == '':
+            flash('No se seleccionó ningún archivo', 'error')
+            return redirect(url_for('admin.backups'))
+
+        # Upload and validate backup
+        backup_info = BackupService.upload_backup(file)
+        flash(f'Backup subido exitosamente: {backup_info["filename"]} ({backup_info["size_mb"]} MB)', 'success')
+
+    except Exception as e:
+        flash(f'Error al subir backup: {str(e)}', 'error')
+
+    return redirect(url_for('admin.backups'))
+
+
+@admin_bp.route('/backups/<filename>/download')
+@admin_required
+def download_backup(filename):
+    """Download a backup file"""
+    try:
+        filepath = BackupService.get_backup_path(filename)
+
+        if not filepath:
+            flash('Backup no encontrado', 'error')
+            return redirect(url_for('admin.backups'))
+
+        return send_file(
+            filepath,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/gzip'
+        )
+    except Exception as e:
+        flash(f'Error al descargar backup: {str(e)}', 'error')
+        return redirect(url_for('admin.backups'))
+
+
+@admin_bp.route('/backups/<filename>/delete', methods=['POST'])
+@admin_required
+def delete_backup(filename):
+    """Delete a backup file"""
+    try:
+        if BackupService.delete_backup(filename):
+            flash(f'Backup "{filename}" eliminado correctamente', 'success')
+        else:
+            flash('No se pudo eliminar el backup', 'error')
+    except Exception as e:
+        flash(f'Error al eliminar backup: {str(e)}', 'error')
+
+    return redirect(url_for('admin.backups'))
+
+
+@admin_bp.route('/backups/<filename>/restore', methods=['POST'])
+@admin_required
+def restore_backup(filename):
+    """Restore from a backup file"""
+    try:
+        # Add confirmation check
+        confirm = request.form.get('confirm')
+        if confirm != 'RESTAURAR':
+            flash('Debes escribir "RESTAURAR" para confirmar la restauración', 'error')
+            return redirect(url_for('admin.backups'))
+
+        # Close all SQLAlchemy connections before restore
+        db.session.remove()
+        db.engine.dispose()
+
+        result = BackupService.restore_backup(filename)
+
+        # The database connection will be lost during restore, so we need to redirect
+        # to login page as the session will be invalidated
+        flash('Backup restaurado exitosamente. Por favor, vuelve a iniciar sesión.', 'success')
+        return redirect(url_for('auth.login'))
+    except Exception as e:
+        flash(f'Error al restaurar backup: {str(e)}', 'error')
+        return redirect(url_for('admin.backups'))
