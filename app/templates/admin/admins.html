@@ -1,0 +1,65 @@
+{% extends "base/base.html" %}
+
+{% block title %}Gestionar Administradores - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-shield-lock"></i> Administradores</h2>
+    <a href="{{ url_for('admin.create_admin') }}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Nuevo Administrador
+    </a>
+</div>
+
+{% if admins %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Centro</th>
+                <th>Fecha de Creación</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for admin in admins %}
+            <tr>
+                <td>
+                    {{ admin.username }}
+                    {% if admin.id == current_user.id %}
+                    <span class="badge bg-primary">Tú</span>
+                    {% endif %}
+                </td>
+                <td>{{ admin.email if admin.email else '<span class="text-muted">No especificado</span>' | safe }}</td>
+                <td>{{ admin.centro if admin.centro else '<span class="text-muted">No especificado</span>' | safe }}</td>
+                <td>{{ admin.created_at.strftime('%d/%m/%Y') if admin.created_at else 'N/A' }}</td>
+                <td>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('admin.edit_admin', admin_id=admin.id) }}"
+                           class="btn btn-sm btn-warning"
+                           title="Editar administrador">
+                            <i class="bi bi-pencil-square"></i> Editar
+                        </a>
+                        {% if admin.id != current_user.id %}
+                        <form method="POST" action="{{ url_for('admin.delete_admin', admin_id=admin.id) }}"
+                              style="display: inline;"
+                              onsubmit="return confirm('¿Estás seguro de que deseas eliminar al administrador {{ admin.username }}? Esta acción no se puede deshacer.');">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Eliminar administrador">
+                                <i class="bi bi-trash"></i> Eliminar
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No hay administradores registrados aún.
+</div>
+{% endif %}
+{% endblock %}

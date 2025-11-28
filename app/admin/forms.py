@@ -99,6 +99,61 @@ class EditStudentForm(FlaskForm):
     submit = SubmitField('Guardar Cambios')
 
 
+class CreateAdminForm(FlaskForm):
+    """Form for creating a new admin"""
+    username = StringField('Nombre de Usuario', validators=[
+        DataRequired(),
+        Length(min=3, max=80, message='El nombre de usuario debe tener entre 3 y 80 caracteres')
+    ], render_kw={"placeholder": "usuario_admin"})
+
+    email = StringField('Email (Opcional)', validators=[
+        Optional(),
+        Email(message='Email inválido')
+    ], render_kw={"placeholder": "admin@email.com"})
+
+    centro = StringField('Centro Educativo (Opcional)', validators=[Optional()],
+                        render_kw={"placeholder": "Ej: IES Miguel de Cervantes"})
+
+    password = PasswordField('Contraseña', validators=[
+        DataRequired(),
+        Length(min=6, message='La contraseña debe tener al menos 6 caracteres')
+    ])
+
+    confirm_password = PasswordField('Confirmar Contraseña', validators=[
+        DataRequired(),
+        EqualTo('password', message='Las contraseñas deben coincidir')
+    ])
+
+    submit = SubmitField('Crear Administrador')
+
+
+class EditAdminForm(FlaskForm):
+    """Form for editing admin information"""
+    username = StringField('Nombre de Usuario', validators=[
+        DataRequired(),
+        Length(min=3, max=80, message='El nombre de usuario debe tener entre 3 y 80 caracteres')
+    ])
+
+    email = StringField('Email (Opcional)', validators=[
+        Optional(),
+        Email(message='Email inválido')
+    ])
+
+    centro = StringField('Centro Educativo (Opcional)', validators=[Optional()],
+                        render_kw={"placeholder": "Ej: IES Miguel de Cervantes"})
+
+    password = PasswordField('Nueva Contraseña (dejar en blanco para no cambiar)', validators=[
+        Optional(),
+        Length(min=6, message='La contraseña debe tener al menos 6 caracteres')
+    ])
+
+    confirm_password = PasswordField('Confirmar Nueva Contraseña', validators=[
+        EqualTo('password', message='Las contraseñas deben coincidir')
+    ])
+
+    submit = SubmitField('Guardar Cambios')
+
+
 class AddYouTubeChannelForm(FlaskForm):
     """Form for adding a YouTube channel"""
     channel_url = StringField('URL del Canal de YouTube', validators=[

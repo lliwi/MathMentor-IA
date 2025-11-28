@@ -9,7 +9,7 @@ from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from functools import wraps
 from app.admin import admin_bp
-from app.admin.forms import UploadBookForm, EditBookForm, CreateStudentForm, EditStudentForm, AddYouTubeChannelForm
+from app.admin.forms import UploadBookForm, EditBookForm, CreateStudentForm, EditStudentForm, CreateAdminForm, EditAdminForm, AddYouTubeChannelForm
 from app import db
 from app.models.book import Book
 from app.models.topic import Topic
@@ -44,12 +44,14 @@ def dashboard():
     books_count = Book.query.count()
     channels_count = YouTubeChannel.query.count()
     students_count = User.query.filter_by(role='student').count()
+    admins_count = User.query.filter_by(role='admin').count()
     topics_count = Topic.query.count()
 
     return render_template('admin/dashboard.html',
                          books_count=books_count,
                          channels_count=channels_count,
                          students_count=students_count,
+                         admins_count=admins_count,
                          topics_count=topics_count)
 
 
@@ -807,3 +809,144 @@ def export_student_csv(student_id):
     response.headers['Content-Disposition'] = f'attachment; filename=student_{student.username}_history.csv'
 
     return response
+
+
+@admin_bp.route('/admins')
+@admin_required
+def admins():
+    """Manage administrators"""
+    all_admins = User.query.filter_by(role='admin').all()
+    return render_template('admin/admins.html', admins=all_admins)
+
+
+@admin_bp.route('/admins/create', methods=['GET', 'POST'])
+@admin_required
+def create_admin():
+    """Create a new administrator"""
+    form = CreateAdminForm()
+
+    if form.validate_on_submit():
+        try:
+            # Check if username already exists
+            if User.query.filter_by(username=form.username.data).first():
+                flash('El nombre de usuario ya existe', 'error')
+                return render_template('admin/create_admin.html', form=form)
+
+            # Check if email already exists (only if provided)
+            if form.email.data and User.query.filter_by(email=form.email.data).first():
+                flash('El email ya está registrado', 'error')
+                return render_template('admin/create_admin.html', form=form)
+
+            # Create user
+            admin = User(
+                username=form.username.data,
+                email=form.email.data if form.email.data else None,
+                centro=form.centro.data if form.centro.data else None,
+                role='admin'
+            )
+            admin.set_password(form.password.data)
+            db.session.add(admin)
+            db.session.commit()
+
+            flash(f'Administrador "{admin.username}" creado exitosamente', 'success')
+            return redirect(url_for('admin.admins'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear administrador: {str(e)}', 'error')
+
+    return render_template('admin/create_admin.html', form=form)
+
+
+@admin_bp.route('/admins/<int:admin_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_admin(admin_id):
+    """Edit administrator information"""
+    admin_user = User.query.get_or_404(admin_id)
+
+    if admin_user.role != 'admin':
+        flash('Este usuario no es un administrador', 'error')
+        return redirect(url_for('admin.admins'))
+
+    # Prevent editing the current admin if it's the only admin
+    admin_count = User.query.filter_by(role='admin').count()
+    if admin_count == 1 and admin_user.id == current_user.id:
+        flash('No puedes editar el único administrador del sistema', 'warning')
+        return redirect(url_for('admin.admins'))
+
+    form = EditAdminForm(obj=admin_user)
+
+    # Pre-populate centro
+    if request.method == 'GET' and admin_user.centro:
+        form.centro.data = admin_user.centro
+
+    if form.validate_on_submit():
+        try:
+            # Check if username is taken by another user
+            existing_user = User.query.filter_by(username=form.username.data).first()
+            if existing_user and existing_user.id != admin_user.id:
+                flash('El nombre de usuario ya existe', 'error')
+                return render_template('admin/edit_admin.html', form=form, admin=admin_user)
+
+            # Check if email is taken by another user (only if provided)
+            if form.email.data:
+                existing_email = User.query.filter_by(email=form.email.data).first()
+                if existing_email and existing_email.id != admin_user.id:
+                    flash('El email ya está registrado', 'error')
+                    return render_template('admin/edit_admin.html', form=form, admin=admin_user)
+
+            # Update user
+            admin_user.username = form.username.data
+            admin_user.email = form.email.data if form.email.data else None
+            admin_user.centro = form.centro.data if form.centro.data else None
+
+            # Update password if provided
+            if form.password.data:
+                admin_user.set_password(form.password.data)
+
+            db.session.commit()
+            flash(f'Administrador "{admin_user.username}" actualizado correctamente', 'success')
+            return redirect(url_for('admin.admins'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar administrador: {str(e)}', 'error')
+
+    return render_template('admin/edit_admin.html', form=form, admin=admin_user)
+
+
+@admin_bp.route('/admins/<int:admin_id>/delete', methods=['POST'])
+@admin_required
+def delete_admin(admin_id):
+    """Delete an administrator"""
+    try:
+        admin_user = User.query.get_or_404(admin_id)
+
+        if admin_user.role != 'admin':
+            flash('Este usuario no es un administrador', 'error')
+            return redirect(url_for('admin.admins'))
+
+        # Prevent deleting yourself
+        if admin_user.id == current_user.id:
+            flash('No puedes eliminarte a ti mismo', 'error')
+            return redirect(url_for('admin.admins'))
+
+        # Prevent deleting the last admin
+        admin_count = User.query.filter_by(role='admin').count()
+        if admin_count == 1:
+            flash('No puedes eliminar el único administrador del sistema', 'error')
+            return redirect(url_for('admin.admins'))
+
+        username = admin_user.username
+
+        # Delete admin
+        db.session.delete(admin_user)
+        db.session.commit()
+
+        flash(f'Administrador "{username}" eliminado correctamente', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar administrador: {str(e)}', 'error')
+
+    return redirect(url_for('admin.admins'))
