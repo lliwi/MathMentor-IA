@@ -86,12 +86,9 @@
                         <div class="mb-3">
                             <label for="course" class="form-label">Curso</label>
                             <select class="form-select" id="course" name="course">
-                                <option value="1º ESO">1º ESO</option>
-                                <option value="2º ESO">2º ESO</option>
-                                <option value="3º ESO" selected>3º ESO</option>
-                                <option value="4º ESO">4º ESO</option>
-                                <option value="1º Bachillerato">1º Bachillerato</option>
-                                <option value="2º Bachillerato">2º Bachillerato</option>
+                                {% for course in courses %}
+                                <option value="{{ course.name }}">{{ course.name }}</option>
+                                {% endfor %}
                             </select>
                         </div>
 

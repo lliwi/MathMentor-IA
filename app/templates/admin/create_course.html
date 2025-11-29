@@ -1,0 +1,45 @@
+{% extends "base/base.html" %}
+
+{% block title %}Crear Curso - MathMentor IA{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="bi bi-mortarboard"></i> Crear Nuevo Curso</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nombre del Curso *</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               placeholder="Ej: 1º ESO, 2º Bachillerato" required>
+                        <small class="form-text text-muted">
+                            Ejemplos: 1º ESO, 2º ESO, 3º ESO, 4º ESO, 1º Bachillerato, 2º Bachillerato
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="order" class="form-label">Orden de visualización</label>
+                        <input type="number" class="form-control" id="order" name="order"
+                               value="{{ next_order }}" min="1">
+                        <small class="form-text text-muted">
+                            Controla el orden en que aparecen los cursos en los selectores
+                        </small>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Crear Curso
+                        </button>
+                        <a href="{{ url_for('admin.courses') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

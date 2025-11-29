@@ -11,6 +11,7 @@ from app import create_app, db
 from app.models.user import User
 from app.models.student_profile import StudentProfile
 from app.models.student_score import StudentScore
+from app.models.course import Course
 from app.services.rag_service import RAGService
 
 
@@ -39,6 +40,23 @@ def init_database():
             )
             admin.set_password('admin123')  # Change this in production!
             db.session.add(admin)
+
+        # Create default courses
+        default_courses = [
+            ('1º ESO', 1),
+            ('2º ESO', 2),
+            ('3º ESO', 3),
+            ('4º ESO', 4),
+            ('1º Bachillerato', 5),
+            ('2º Bachillerato', 6),
+        ]
+
+        for course_name, order in default_courses:
+            course = Course.query.filter_by(name=course_name).first()
+            if not course:
+                print(f"Creating course: {course_name}...")
+                course = Course(name=course_name, order=order, active=True)
+                db.session.add(course)
 
         # Create test student users
         students = [

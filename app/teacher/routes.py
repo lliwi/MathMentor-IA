@@ -293,10 +293,12 @@ def generate_exercises():
     """Generate exercises in batch"""
     from app.models.book import Book
     from app.models.youtube_channel import YouTubeChannel
+    from app.models.course import Course
 
     topics = Topic.query.all()
     books = Book.query.all()
     channels = YouTubeChannel.query.all()
+    courses = Course.query.filter_by(active=True).order_by(Course.order).all()
 
     if request.method == 'POST':
         try:
@@ -386,7 +388,7 @@ def generate_exercises():
                 'message': f'Error al generar ejercicios: {str(e)}'
             }), 500
 
-    return render_template('teacher/generate_exercises.html', topics=topics, books=books, channels=channels)
+    return render_template('teacher/generate_exercises.html', topics=topics, books=books, channels=channels, courses=courses)
 
 
 @teacher_bp.route('/create-exercise', methods=['GET', 'POST'])
@@ -563,10 +565,12 @@ def generate_summaries():
     """Generate summaries in batch"""
     from app.models.book import Book
     from app.models.youtube_channel import YouTubeChannel
+    from app.models.course import Course
 
     topics = Topic.query.all()
     books = Book.query.all()
     channels = YouTubeChannel.query.all()
+    courses = Course.query.filter_by(active=True).order_by(Course.order).all()
 
     if request.method == 'POST':
         try:
@@ -623,7 +627,7 @@ def generate_summaries():
             db.session.rollback()
             return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
-    return render_template('teacher/generate_summaries.html', topics=topics, books=books, channels=channels)
+    return render_template('teacher/generate_summaries.html', topics=topics, books=books, channels=channels, courses=courses)
 
 
 @teacher_bp.route('/create-summary', methods=['GET', 'POST'])

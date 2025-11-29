@@ -97,7 +97,29 @@
     </div>
 </div>
 
-<div class="row g-4">
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-secondary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-mortarboard"></i> Gestionar Cursos</h5>
+                <p class="card-text">Crear y gestionar los cursos del sistema</p>
+                <a href="{{ url_for('admin.courses') }}" class="btn btn-light">Ir a Cursos</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card text-white bg-dark">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-archive"></i> Gestión de Backups</h5>
+                <p class="card-text">Crear, descargar y restaurar copias de seguridad completas (base de datos + archivos PDF + embeddings RAG)</p>
+                <a href="{{ url_for('admin.backups') }}" class="btn btn-light">Ir a Backups</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4" style="display:none;">
     <div class="col-md-12">
         <div class="card text-white bg-dark">
             <div class="card-body">

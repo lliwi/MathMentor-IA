@@ -10,8 +10,7 @@ from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, U
 class UploadBookForm(FlaskForm):
     """Form for uploading a book PDF"""
     title = StringField('Título del Libro', validators=[DataRequired()])
-    course = StringField('Curso', validators=[DataRequired()],
-                        render_kw={"placeholder": "Ej: 1º ESO, 2º Bachillerato"})
+    course = SelectField('Curso', validators=[DataRequired()], choices=[])
     subject = StringField('Materia', validators=[DataRequired()],
                          render_kw={"placeholder": "Ej: Matemáticas, Física"})
     pdf_file = FileField('Archivo PDF', validators=[
@@ -24,8 +23,7 @@ class UploadBookForm(FlaskForm):
 class EditBookForm(FlaskForm):
     """Form for editing book metadata"""
     title = StringField('Título del Libro', validators=[DataRequired()])
-    course = StringField('Curso', validators=[DataRequired()],
-                        render_kw={"placeholder": "Ej: 1º ESO, 2º Bachillerato"})
+    course = SelectField('Curso', validators=[DataRequired()], choices=[])
     subject = StringField('Materia', validators=[DataRequired()],
                          render_kw={"placeholder": "Ej: Matemáticas, Física"})
     submit = SubmitField('Guardar Cambios')
@@ -63,8 +61,7 @@ class CreateStudentForm(FlaskForm):
         EqualTo('password', message='Las contraseñas deben coincidir')
     ])
 
-    course = StringField('Curso', validators=[Optional()],
-                        render_kw={"placeholder": "Ej: 1º ESO, 2º Bachillerato"})
+    course = SelectField('Curso', validators=[Optional()], choices=[])
 
     submit = SubmitField('Crear Estudiante')
 
@@ -84,8 +81,7 @@ class EditStudentForm(FlaskForm):
     centro = StringField('Centro Educativo (Opcional)', validators=[Optional()],
                         render_kw={"placeholder": "Ej: IES Miguel de Cervantes"})
 
-    course = StringField('Curso', validators=[Optional()],
-                        render_kw={"placeholder": "Ej: 1º ESO, 2º Bachillerato"})
+    course = SelectField('Curso', validators=[Optional()], choices=[])
 
     password = PasswordField('Nueva Contraseña (dejar en blanco para no cambiar)', validators=[
         Optional(),
@@ -161,8 +157,7 @@ class AddYouTubeChannelForm(FlaskForm):
         URL(message='Debe ser una URL válida')
     ], render_kw={"placeholder": "https://www.youtube.com/@nombrecanal"})
 
-    course = StringField('Curso', validators=[DataRequired()],
-                        render_kw={"placeholder": "Ej: 1º ESO, 2º Bachillerato"})
+    course = SelectField('Curso', validators=[DataRequired()], choices=[])
 
     subject = StringField('Materia', validators=[Optional()],
                          default="Matemáticas",

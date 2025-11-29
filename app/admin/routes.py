@@ -12,6 +12,7 @@ from app.admin import admin_bp
 from app.admin.forms import UploadBookForm, EditBookForm, CreateStudentForm, EditStudentForm, CreateAdminForm, EditAdminForm, AddYouTubeChannelForm
 from app import db
 from app.models.book import Book
+from app.models.course import Course
 from app.models.topic import Topic
 from app.models.user import User
 from app.models.student_profile import StudentProfile
@@ -69,6 +70,10 @@ def books():
 def upload_book():
     """Upload a new book (PDF)"""
     form = UploadBookForm()
+
+    # Populate course choices from database
+    active_courses = Course.query.filter_by(active=True).order_by(Course.order).all()
+    form.course.choices = [(c.name, c.name) for c in active_courses]
 
     if form.validate_on_submit():
         try:
@@ -185,6 +190,10 @@ def edit_book(book_id):
     book = Book.query.get_or_404(book_id)
     form = EditBookForm(obj=book)
 
+    # Populate course choices from database
+    active_courses = Course.query.filter_by(active=True).order_by(Course.order).all()
+    form.course.choices = [(c.name, c.name) for c in active_courses]
+
     if form.validate_on_submit():
         try:
             book.title = form.title.data
@@ -240,6 +249,10 @@ def content():
 def upload_youtube():
     """Add a new YouTube channel"""
     form = AddYouTubeChannelForm()
+
+    # Populate course choices from database
+    active_courses = Course.query.filter_by(active=True).order_by(Course.order).all()
+    form.course.choices = [(c.name, c.name) for c in active_courses]
 
     if form.validate_on_submit():
         try:
@@ -355,6 +368,10 @@ def update_youtube_channel(channel_id):
     channel = YouTubeChannel.query.get_or_404(channel_id)
     form = AddYouTubeChannelForm()
 
+    # Populate course choices from database
+    active_courses = Course.query.filter_by(active=True).order_by(Course.order).all()
+    form.course.choices = [(c.name, c.name) for c in active_courses]
+
     # Pre-fill form with existing channel data
     if request.method == 'GET':
         form.channel_url.data = channel.channel_url
@@ -469,7 +486,10 @@ def delete_youtube_channel(channel_id):
 @admin_required
 def ai_config():
     """Configure AI engines"""
-    return render_template('admin/ai_config.html')
+    import os
+    active_engine = os.getenv('ACTIVE_AI_ENGINE', 'openai')
+    active_model = os.getenv('ACTIVE_AI_MODEL', 'gpt-4')
+    return render_template('admin/ai_config.html', active_engine=active_engine, active_model=active_model)
 
 
 @admin_bp.route('/students')
@@ -520,6 +540,10 @@ def create_student():
     from app.models.student_score import StudentScore
 
     form = CreateStudentForm()
+
+    # Populate course choices from database
+    active_courses = Course.query.filter_by(active=True).order_by(Course.order).all()
+    form.course.choices = [('', 'Seleccionar curso...')] + [(c.name, c.name) for c in active_courses]
 
     if form.validate_on_submit():
         try:
@@ -579,6 +603,10 @@ def edit_student(student_id):
         return redirect(url_for('admin.students'))
 
     form = EditStudentForm(obj=student)
+
+    # Populate course choices from database
+    active_courses = Course.query.filter_by(active=True).order_by(Course.order).all()
+    form.course.choices = [('', 'Seleccionar curso...')] + [(c.name, c.name) for c in active_courses]
 
     # Pre-populate course and centro from profile
     if request.method == 'GET':
@@ -1066,3 +1094,119 @@ def restore_backup(filename):
     except Exception as e:
         flash(f'Error al restaurar backup: {str(e)}', 'error')
         return redirect(url_for('admin.backups'))
+
+
+# ==================== COURSE MANAGEMENT ====================
+
+@admin_bp.route('/courses')
+@admin_required
+def courses():
+    """Manage courses"""
+    all_courses = Course.query.order_by(Course.order).all()
+    return render_template('admin/courses.html', courses=all_courses)
+
+
+@admin_bp.route('/courses/create', methods=['GET', 'POST'])
+@admin_required
+def create_course():
+    """Create a new course"""
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            order = request.form.get('order', type=int)
+
+            if not name:
+                flash('El nombre del curso es obligatorio', 'error')
+                return redirect(url_for('admin.courses'))
+
+            # Check if course already exists
+            if Course.query.filter_by(name=name).first():
+                flash('Ya existe un curso con ese nombre', 'error')
+                return redirect(url_for('admin.courses'))
+
+            # If order not provided, use the next available number
+            if order is None:
+                max_order = db.session.query(db.func.max(Course.order)).scalar() or 0
+                order = max_order + 1
+
+            course = Course(name=name, order=order)
+            db.session.add(course)
+            db.session.commit()
+
+            flash(f'Curso "{name}" creado exitosamente', 'success')
+            return redirect(url_for('admin.courses'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear curso: {str(e)}', 'error')
+            return redirect(url_for('admin.courses'))
+
+    # GET request - get next order number
+    max_order = db.session.query(db.func.max(Course.order)).scalar() or 0
+    next_order = max_order + 1
+    return render_template('admin/create_course.html', next_order=next_order)
+
+
+@admin_bp.route('/courses/<int:course_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_course(course_id):
+    """Edit a course"""
+    course = Course.query.get_or_404(course_id)
+
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            order = request.form.get('order', type=int)
+            active = request.form.get('active') == 'on'
+
+            if not name:
+                flash('El nombre del curso es obligatorio', 'error')
+                return render_template('admin/edit_course.html', course=course)
+
+            # Check if another course has the same name
+            existing = Course.query.filter_by(name=name).filter(Course.id != course_id).first()
+            if existing:
+                flash('Ya existe otro curso con ese nombre', 'error')
+                return render_template('admin/edit_course.html', course=course)
+
+            course.name = name
+            if order is not None:
+                course.order = order
+            course.active = active
+
+            db.session.commit()
+            flash(f'Curso "{name}" actualizado exitosamente', 'success')
+            return redirect(url_for('admin.courses'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar curso: {str(e)}', 'error')
+
+    return render_template('admin/edit_course.html', course=course)
+
+
+@admin_bp.route('/courses/<int:course_id>/delete', methods=['POST'])
+@admin_required
+def delete_course(course_id):
+    """Delete a course"""
+    try:
+        course = Course.query.get_or_404(course_id)
+        course_name = course.name
+
+        # Check if course is being used by students or books
+        students_using = StudentProfile.query.filter_by(course=course_name).count()
+        books_using = Book.query.filter_by(course=course_name).count()
+
+        if students_using > 0 or books_using > 0:
+            flash(f'No se puede eliminar el curso "{course_name}" porque está siendo utilizado por {students_using} estudiante(s) y {books_using} libro(s)', 'error')
+            return redirect(url_for('admin.courses'))
+
+        db.session.delete(course)
+        db.session.commit()
+        flash(f'Curso "{course_name}" eliminado exitosamente', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar curso: {str(e)}', 'error')
+
+    return redirect(url_for('admin.courses'))
