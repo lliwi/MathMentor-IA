@@ -33,9 +33,7 @@
 
             <div id="exercise-display" class="d-none">
                 <div class="alert alert-info">
-                    <strong>Tema:</strong> <span id="exercise-topic"></span><br>
-                    <strong>Dificultad:</strong> <span id="exercise-difficulty"></span><br>
-                    <strong>📚 Fuente:</strong> <span id="exercise-source"></span>
+                    <strong>Tema:</strong> <span id="exercise-topic"></span>
                 </div>
 
                 <div class="card mb-4">
@@ -312,8 +310,6 @@ function generateExercise() {
             const exerciseHTML = marked.parse(data.exercise.content);
             document.getElementById('exercise-content').innerHTML = exerciseHTML;
             document.getElementById('exercise-topic').textContent = data.exercise.topic;
-            document.getElementById('exercise-difficulty').textContent = data.exercise.difficulty;
-            document.getElementById('exercise-source').textContent = data.exercise.source || 'Fuente desconocida';
 
             // Populate procedures checkboxes
             displayProcedures(currentProcedures);

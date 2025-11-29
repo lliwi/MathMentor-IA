@@ -27,7 +27,7 @@
                                 </optgroup>
                                 <optgroup label="🎥 Canales de YouTube">
                                     {% for channel in channels %}
-                                    <option value="channel_{{ channel.id }}">{{ channel.name }}</option>
+                                    <option value="channel_{{ channel.id }}">{{ channel.channel_name }}</option>
                                     {% endfor %}
                                 </optgroup>
                             </select>
@@ -50,7 +50,7 @@
                                         {% if topic.source_type == 'pdf_book' and topic.book %}
                                             <small class="text-muted">(📚 {{ topic.book.title }})</small>
                                         {% elif topic.source_type == 'youtube_video' and topic.video %}
-                                            <small class="text-muted">(🎥 {{ topic.video.channel.name if topic.video.channel else 'YouTube' }})</small>
+                                            <small class="text-muted">(🎥 {{ topic.video.channel.channel_name if topic.video.channel else 'YouTube' }})</small>
                                         {% endif %}
                                     </label>
                                 </div>
@@ -230,6 +230,10 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
         updateProgress(100, 'Completado');
 
         if (data.success) {
+            // Reset button
+            document.getElementById('generateBtn').disabled = false;
+            document.getElementById('generateBtn').innerHTML = '<i class="bi bi-cpu"></i> Generar Resúmenes';
+
             setTimeout(() => {
                 document.getElementById('progressSection').style.display = 'none';
                 document.getElementById('resultsSection').style.display = 'block';

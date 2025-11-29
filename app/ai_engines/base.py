@@ -22,7 +22,7 @@ class AIEngine(ABC):
         self.config = kwargs
 
     @abstractmethod
-    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None, source_info: Dict[str, str] = None) -> Dict[str, Any]:
+    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None, source_info: Dict[str, str] = None, existing_exercises: list = None, iteration: int = None) -> Dict[str, Any]:
         """
         Generate a math exercise based on topic and context
 
@@ -32,6 +32,8 @@ class AIEngine(ABC):
             difficulty: Difficulty level (easy, medium, hard)
             course: Course level (e.g., "1º ESO")
             source_info: Source information (book or video) with 'type', 'title', 'formatted' keys
+            existing_exercises: List of existing exercise contents to avoid duplicates
+            iteration: Exercise number in the series (for variety)
 
         Returns:
             Dict with 'content', 'solution', 'methodology' keys

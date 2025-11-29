@@ -54,7 +54,7 @@ class DeepSeekEngine(AIEngine):
         return content
 
     @cache_service.cache_exercise(ttl=3600)  # Cache for 1 hour
-    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None, source_info: Dict[str, str] = None) -> Dict[str, Any]:
+    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None, source_info: Dict[str, str] = None, existing_exercises: list = None, iteration: int = None) -> Dict[str, Any]:
         """Generate exercise with caching - same logic as OpenAI"""
         difficulty_map = {
             'easy': 'nivel básico, conceptos fundamentales',
@@ -70,12 +70,22 @@ class DeepSeekEngine(AIEngine):
             elif source_info.get('type') == 'video':
                 source_text = f"\nFuente: Video '{source_info.get('title')}' del canal {source_info.get('channel')}"
 
+        # Add information about existing exercises to avoid duplicates
+        existing_text = ""
+        if existing_exercises:
+            existing_text = "\n\nEJERCICIOS YA GENERADOS (NO REPETIR):\n"
+            for idx, ex in enumerate(existing_exercises[:5], 1):  # Show last 5 exercises
+                existing_text += f"{idx}. {ex[:200]}...\n"
+            existing_text += "\nIMPORTANTE: El nuevo ejercicio debe ser COMPLETAMENTE DIFERENTE de los anteriores. Cambia tanto la situación/contexto como los valores numéricos."
+
+        iteration_text = f"\nEste es el ejercicio #{iteration} de la serie." if iteration else ""
+
         prompt = f"""Genera un ejercicio de matemáticas en JSON:
 
 Tema: {topic}
 Curso: {course or 'No especificado'}{source_text}
 Dificultad: {difficulty_map.get(difficulty, 'medio')}
-Contexto: {context[:500]}
+Contexto: {context[:500]}{iteration_text}{existing_text}
 
 JSON esperado:
 {{
@@ -95,7 +105,8 @@ Requisitos:
 - Sin texto adicional fuera del JSON
 - IMPORTANTE: En el enunciado, cuando el problema involucre magnitudes físicas (longitud, peso, tiempo, velocidad, área, volumen, etc.), SIEMPRE especifica claramente: "Indica las unidades en tu respuesta" o "Expresa el resultado con sus unidades correspondientes"
 - IMPORTANTE: Usa emoticonos apropiados para hacer el ejercicio más divertido y motivador
-  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲"""
+  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲
+- CRÍTICO: Genera un ejercicio ÚNICO y ORIGINAL. Varía la temática contextual (diferentes situaciones de la vida real, diferentes enfoques del problema). Usa valores numéricos completamente diferentes. NO repitas ejercicios similares a los ya generados."""
 
         messages = [
             {"role": "system", "content": "Eres un profesor de matemáticas experto. Usa emoticonos para hacer el contenido más visual y atractivo."},

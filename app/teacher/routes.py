@@ -322,14 +322,26 @@ def generate_exercises():
                 # Get source information
                 source_info = topic.get_source_info()
 
+                # Fetch existing exercises for this topic to avoid duplicates
+                existing_exercises_db = Exercise.query.filter_by(topic_id=topic_id).order_by(Exercise.id.desc()).limit(10).all()
+                existing_contents = [ex.content for ex in existing_exercises_db]
+
+                # Track exercises generated in this session
+                session_exercises = []
+
                 # Generate exercises for this topic
                 for i in range(quantity):
+                    # Combine existing DB exercises with session exercises
+                    all_existing = existing_contents + session_exercises
+
                     exercise_data = ai_engine.generate_exercise(
                         topic=topic.topic_name,
                         context=context,
                         difficulty=difficulty,
                         course=data.get('course', 'ESO'),
-                        source_info=source_info
+                        source_info=source_info,
+                        existing_exercises=all_existing,
+                        iteration=i + 1
                     )
 
                     # Convert solution and methodology to strings if needed
@@ -355,6 +367,9 @@ def generate_exercises():
                     )
                     db.session.add(exercise)
                     generated_exercises.append(exercise)
+
+                    # Add to session exercises for next iteration
+                    session_exercises.append(exercise_data.get('content', ''))
 
             db.session.commit()
 

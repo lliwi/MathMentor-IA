@@ -42,8 +42,8 @@ class Topic(db.Model):
                 'type': 'video',
                 'title': self.video.title,
                 'url': self.video.url,
-                'channel': self.video.channel.name if self.video.channel else 'Desconocido',
-                'formatted': f"{self.video.title} - {self.video.channel.name if self.video.channel else 'Canal desconocido'}"
+                'channel': self.video.channel.channel_name if self.video.channel else 'Desconocido',
+                'formatted': f"{self.video.title} - {self.video.channel.channel_name if self.video.channel else 'Canal desconocido'}"
             }
         else:
             return {

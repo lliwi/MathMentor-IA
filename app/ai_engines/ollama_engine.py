@@ -34,7 +34,7 @@ class OllamaEngine(AIEngine):
         return response.json()['response']
 
     @cache_service.cache_exercise(ttl=3600)  # Cache for 1 hour
-    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None, source_info: Dict[str, str] = None) -> Dict[str, Any]:
+    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None, source_info: Dict[str, str] = None, existing_exercises: list = None, iteration: int = None) -> Dict[str, Any]:
         """Generate exercise using Ollama with caching"""
 
         # Add source information to the prompt
@@ -45,11 +45,21 @@ class OllamaEngine(AIEngine):
             elif source_info.get('type') == 'video':
                 source_text = f"\nFuente: Video '{source_info.get('title')}' del canal {source_info.get('channel')}"
 
+        # Add information about existing exercises to avoid duplicates
+        existing_text = ""
+        if existing_exercises:
+            existing_text = "\n\nEJERCICIOS YA GENERADOS (NO REPETIR):\n"
+            for idx, ex in enumerate(existing_exercises[:5], 1):  # Show last 5 exercises
+                existing_text += f"{idx}. {ex[:200]}...\n"
+            existing_text += "\nIMPORTANTE: El nuevo ejercicio debe ser COMPLETAMENTE DIFERENTE de los anteriores. Cambia tanto la situación/contexto como los valores numéricos."
+
+        iteration_text = f"\nEste es el ejercicio #{iteration} de la serie." if iteration else ""
+
         prompt = f"""Eres un profesor de matemáticas. Genera un ejercicio de matemáticas.
 
 Tema: {topic}
 Curso: {course or 'No especificado'}{source_text}
-Dificultad: {difficulty}
+Dificultad: {difficulty}{iteration_text}{existing_text}
 
 Contexto:
 {context[:1000]}
@@ -70,7 +80,8 @@ Incluye 6-10 procedimientos matemáticos (algunos correctos, otros no aplicables
 IMPORTANTE: Cada procedimiento debe tener "description" que explique qué es.
 IMPORTANTE: En el enunciado, cuando el problema involucre magnitudes físicas (longitud, peso, tiempo, velocidad, área, volumen, etc.), SIEMPRE especifica claramente: "Indica las unidades en tu respuesta" o "Expresa el resultado con sus unidades correspondientes"
 IMPORTANTE: Usa emoticonos apropiados para hacer el ejercicio más divertido y motivador
-  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲"""
+  Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲
+CRÍTICO: Genera un ejercicio ÚNICO y ORIGINAL. Varía la temática contextual (diferentes situaciones de la vida real, diferentes enfoques del problema). Usa valores numéricos completamente diferentes. NO repitas ejercicios similares a los ya generados."""
 
         response = self._call_generate(prompt, temperature=0.8)
 
