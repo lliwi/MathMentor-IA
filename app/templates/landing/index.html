@@ -1,0 +1,344 @@
+{% extends "landing/base_landing.html" %}
+
+{% block title %}MathMentor - Di Adiós a los Ceros{% endblock %}
+
+{% block content %}
+
+<!-- ===========================
+     HERO SECTION
+     =========================== -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="animate-fade-in">
+                    Di Adiós a los Ceros.<br>
+                    Prepárate para el <span class="animate-pulse">10</span> con MathMentor
+                </h1>
+                <p class="lead">
+                    La IA que te enseña matemáticas como un juego
+                </p>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-cta">
+                    ¡Empieza ya!
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================
+     INTRODUCTION SECTION
+     =========================== -->
+<section class="intro-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2>Tu Profesor de Matemáticas de Bolsillo, 24/7</h2>
+                <div class="section-divider"></div>
+                <p class="lead">
+                    MathMentor combina la inteligencia artificial más avanzada con metodología educativa validada por profesores expertos.
+                    No es solo practicar, es <strong>aprender de verdad</strong>.
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4 mt-4">
+            <div class="col-md-4">
+                <div class="feature-icon">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <h4 class="text-center fw-bold">IA de Vanguardia</h4>
+                <p class="text-center">
+                    Tecnología IA adaptada específicamente para matemáticas.
+                    Genera ejercicios y resúmenes personalizados en segundos.
+                </p>
+            </div>
+
+            <div class="col-md-4">
+                <div class="feature-icon">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+                <h4 class="text-center fw-bold">Validado por Expertos</h4>
+                <p class="text-center">
+                    Cada ejercicio y explicación ha sido revisado por profesores de matemáticas con años de experiencia docente.
+                </p>
+            </div>
+
+            <div class="col-md-4">
+                <div class="feature-icon">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <h4 class="text-center fw-bold">Resultados Comprobados</h4>
+                <p class="text-center">
+                    Estudiantes que usan MathMentor mejoran su nota media en matemáticas entre 1.5 y 2.5 puntos en solo un trimestre.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================
+     FEATURES SECTION
+     =========================== -->
+<section class="features-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2>El Sistema no más ceros</h2>
+                <div class="section-divider"></div>
+                <p class="lead">
+                    Tres pilares que transforman tu forma de estudiar matemáticas
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Feature 1: Exercise Generation -->
+            <div class="col-lg-4">
+                <div class="feature-card">
+                    <img src="{{ url_for('static', filename='images/1.png') }}" alt="Generación Inteligente de Ejercicios">
+                    <span class="badge bg-primary mb-3">
+                        <i class="bi bi-lightning-charge-fill"></i> Generación IA
+                    </span>
+                    <h4>Ejercicios a tu Medida</h4>
+                    <p>
+                        La IA genera problemas <strong>personalizados</strong> basados en tus libros de texto y tu nivel exacto.
+                        Cada ejercicio está diseñado para cerrar tus lagunas de conocimiento específicas.
+                    </p>
+                    <ul class="text-start mt-3">
+                        <li>Problemas únicos cada vez</li>
+                        <li>Adaptados a tu libro de texto</li>
+                        <li>Dificultad progresiva inteligente</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Feature 2: AI Summaries -->
+            <div class="col-lg-4">
+                <div class="feature-card">
+                    <img src="{{ url_for('static', filename='images/2.png') }}" alt="Resúmenes con IA">
+                    <span class="badge bg-info mb-3">
+                        <i class="bi bi-book-fill"></i> Resúmenes IA
+                    </span>
+                    <h4>Resúmenes que Entiendas</h4>
+                    <p>
+                        Olvídate de copiar páginas sin entender. La IA extrae lo <strong>realmente importante</strong> de tu temario
+                        y lo explica con ejemplos que puedes entender.
+                    </p>
+                    <ul class="text-start mt-3">
+                        <li>Conceptos clave explicados con claridad</li>
+                        <li>Ejemplos prácticos paso a paso</li>
+                        <li>Formato optimizado para exámenes</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Feature 3: Progress Tracking -->
+            <div class="col-lg-4">
+                <div class="feature-card">
+                    <img src="{{ url_for('static', filename='images/3.png') }}" alt="Seguimiento de Progreso">
+                    <span class="badge bg-success mb-3">
+                        <i class="bi bi-graph-up"></i> Seguimiento
+                    </span>
+                    <h4>Mide tu Evolución</h4>
+                    <p>
+                        Visualiza tu progreso en tiempo real. Identifica qué temas dominas y cuáles necesitan más práctica.
+                        <strong>Los datos no mienten.</strong>
+                    </p>
+                    <ul class="text-start mt-3">
+                        <li>Estadísticas detalladas por tema</li>
+                        <li>Identificación de puntos débiles</li>
+                        <li>Recomendaciones personalizadas</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================
+     GAMIFICATION SECTION
+     =========================== -->
+<section class="gamification-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2>¡Convierte el Estudio en un Juego!</h2>
+                <div class="section-divider bg-white"></div>
+                <p class="lead">
+                    Gana puntos, desbloquea logros y compite con tus compañeros.
+                    Estudiar matemáticas nunca fue tan <strong>adictivo</strong>.
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="gamification-card">
+                    <div class="icon-badge">
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <h4>Sistema de Puntos</h4>
+                    <p>
+                        Gana +10 puntos por cada respuesta correcta, +5 por usar la metodología adecuada.
+                        Construye rachas consecutivas para multiplicar tus puntos.
+                    </p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="gamification-card">
+                    <div class="icon-badge">
+                        <i class="bi bi-trophy-fill"></i>
+                    </div>
+                    <h4>Insignias y Logros</h4>
+                    <p>
+                        Desbloquea logros especiales al completar retos: "Racha de 7 días", "Maestro de Ecuaciones", "100 Ejercicios Perfectos"...
+                    </p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="gamification-card">
+                    <div class="icon-badge">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <h4>Niveles y Rankings</h4>
+                    <p>
+                        Sube de nivel desde "Aprendiz" hasta "Genio Matemático".
+                        Compite en el ranking mensual con tus compañeros de clase.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row align-items-center g-4 mt-5">
+            <div class="col-md-6">
+                <img src="{{ url_for('static', filename='images/4.png') }}" alt="Sistema de Gamificación" class="mb-3">
+            </div>
+            <div class="col-md-6">
+                <img src="{{ url_for('static', filename='images/5.png') }}" alt="Dashboard de Progreso">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================
+     TESTIMONIALS SECTION
+     =========================== -->
+<section class="testimonials-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2>Lo Que Dicen Nuestros Estudiantes</h2>
+                <div class="section-divider"></div>
+                <p class="lead">
+                    Miles de estudiantes ya están mejorando sus notas con MathMentor
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-4">
+                <div class="testimonial-card">
+                    <div class="quote-text">
+                        "Pasé de un 4 a un 8 en un solo trimestre. Los ejercicios personalizados son INCREÍBLES.
+                        Es como tener un profesor particular 24/7 que sabe exactamente qué necesito practicar."
+                    </div>
+                    <div class="rating">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <div class="author mt-3">
+                        <div class="author-avatar">M</div>
+                        <div class="author-info">
+                            <h5>María González</h5>
+                            <p>3º ESO - IES Miguel de Cervantes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="testimonial-card">
+                    <div class="quote-text">
+                        "Lo mejor es que no me siento solo estudiando. El sistema de puntos me motiva un montón.
+                        Ahora compito con mis amigos a ver quién consigue más rachas. ¡Estudiar es divertido!"
+                    </div>
+                    <div class="rating">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <div class="author mt-3">
+                        <div class="author-avatar">J</div>
+                        <div class="author-info">
+                            <h5>Juan Martínez</h5>
+                            <p>2º ESO - Colegio San José</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="testimonial-card">
+                    <div class="quote-text">
+                        "Los resúmenes generados por IA me han salvado la vida antes de los exámenes.
+                        Son claros, concisos y con ejemplos que realmente entiendo. Mi profesora me pregunta de dónde los saco."
+                    </div>
+                    <div class="rating">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <div class="author mt-3">
+                        <div class="author-avatar">L</div>
+                        <div class="author-info">
+                            <h5>Lucía Fernández</h5>
+                            <p>4º ESO - IES Ramón y Cajal</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-lg-8 mx-auto">
+                <img src="{{ url_for('static', filename='images/6.png') }}" alt="Testimonios de Estudiantes" class="w-100" style="border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================
+     FINAL CTA SECTION
+     =========================== -->
+<section class="cta-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <h2>¡Empieza a Transformar tus Notas Hoy!</h2>
+                <p class="lead">
+                    Únete a miles de estudiantes que ya están mejorando con MathMentor
+                </p>
+
+                <a href="{{ url_for('auth.login') }}" class="btn btn-cta-large">
+                    <i class="bi bi-rocket-takeoff-fill me-2"></i>
+                    Empieza ¡Ya!
+                </a>
+
+    
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
