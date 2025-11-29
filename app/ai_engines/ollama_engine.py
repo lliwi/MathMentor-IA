@@ -34,12 +34,21 @@ class OllamaEngine(AIEngine):
         return response.json()['response']
 
     @cache_service.cache_exercise(ttl=3600)  # Cache for 1 hour
-    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None) -> Dict[str, Any]:
+    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None, source_info: Dict[str, str] = None) -> Dict[str, Any]:
         """Generate exercise using Ollama with caching"""
+
+        # Add source information to the prompt
+        source_text = ""
+        if source_info:
+            if source_info.get('type') == 'book':
+                source_text = f"\nFuente: Libro '{source_info.get('title')}' ({source_info.get('course')} - {source_info.get('subject')})"
+            elif source_info.get('type') == 'video':
+                source_text = f"\nFuente: Video '{source_info.get('title')}' del canal {source_info.get('channel')}"
+
         prompt = f"""Eres un profesor de matemáticas. Genera un ejercicio de matemáticas.
 
 Tema: {topic}
-Curso: {course or 'No especificado'}
+Curso: {course or 'No especificado'}{source_text}
 Dificultad: {difficulty}
 
 Contexto:
@@ -169,13 +178,21 @@ Busca especialmente en el índice o tabla de contenidos si está presente."""
             return []
 
     @cache_service.cache_summary(ttl=86400)
-    def generate_topic_summary(self, topic: str, context: str, course: str = None) -> str:
+    def generate_topic_summary(self, topic: str, context: str, course: str = None, source_info: Dict[str, str] = None) -> str:
         """Generate a comprehensive topic summary using Ollama with caching"""
+
+        # Add source information to the prompt
+        source_text = ""
+        if source_info:
+            if source_info.get('type') == 'book':
+                source_text = f"\nFUENTE: Libro '{source_info.get('title')}' ({source_info.get('course')} - {source_info.get('subject')})"
+            elif source_info.get('type') == 'video':
+                source_text = f"\nFUENTE: Video '{source_info.get('title')}' del canal {source_info.get('channel')}"
 
         prompt = f"""Eres un profesor de matemáticas experto. Genera un resumen de estudio completo y didáctico sobre el siguiente tema:
 
 TEMA: {topic}
-CURSO: {course or "No especificado"}
+CURSO: {course or "No especificado"}{source_text}
 
 CONTENIDO DEL LIBRO DE TEXTO:
 {context}

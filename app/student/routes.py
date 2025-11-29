@@ -92,12 +92,16 @@ def _prefetch_exercises_background(app, topic_ids, course, student_id):
                     max_attempts = 3  # Try up to 3 times to get unique exercise
 
                     for attempt in range(max_attempts):
+                        # Get source information
+                        source_info = topic.get_source_info()
+
                         # Generate exercise
                         exercise_data = ai_engine.generate_exercise(
                             topic=topic.topic_name,
                             context=context,
                             difficulty=difficulty,
-                            course=course
+                            course=course,
+                            source_info=source_info
                         )
 
                         # Check if this exercise content is unique
@@ -186,13 +190,17 @@ def _prefetch_next_exercise_background(app, topic_id, course, student_id, diffic
             # Get student's completed exercises
             completed_exercise_contents = AnalyticsService.get_completed_exercise_contents(student_id)
 
+            # Get source information
+            source_info = topic.get_source_info()
+
             # Try to generate unique exercise and add to pool
             for attempt in range(3):
                 exercise_data = ai_engine.generate_exercise(
                     topic=topic.topic_name,
                     context=context,
                     difficulty=difficulty,
-                    course=course
+                    course=course,
+                    source_info=source_info
                 )
 
                 # Check uniqueness
@@ -314,6 +322,9 @@ def generate_exercise():
             rag_time = time.time() - start_rag
             print(f"[TIMING] RAG context retrieval: {rag_time:.3f}s")
 
+            # Get source information
+            source_info = topic.get_source_info()
+
             # Generate exercise using AI
             start_ai = time.time()
             ai_engine = AIEngineFactory.create()
@@ -321,7 +332,8 @@ def generate_exercise():
                 topic=topic.topic_name,
                 context=context,
                 difficulty=difficulty,
-                course=profile.course
+                course=profile.course,
+                source_info=source_info
             )
             ai_time = time.time() - start_ai
             print(f"[TIMING] AI exercise generation: {ai_time:.3f}s")
@@ -367,6 +379,9 @@ def generate_exercise():
         total_time = time.time() - start_total
         print(f"[TIMING] TOTAL generate_exercise: {total_time:.3f}s (source: {exercise_source})")
 
+        # Get source information for display
+        source_info = topic.get_source_info()
+
         return jsonify({
             'success': True,
             'exercise': {
@@ -375,7 +390,8 @@ def generate_exercise():
                 'topic': topic.topic_name,
                 'topic_id': topic_id,
                 'difficulty': difficulty,
-                'available_procedures': exercise.available_procedures or []
+                'available_procedures': exercise.available_procedures or [],
+                'source': source_info.get('formatted', 'Fuente desconocida')
             }
         })
 
@@ -665,10 +681,14 @@ def buy_summary():
                 return jsonify({"success": False,
                               "message": "No hay contexto disponible para este tema"})
 
+            # Get source information
+            source_info = topic.get_source_info()
+
             summary_content = ai_engine.generate_topic_summary(
                 topic=topic.topic_name,
                 context=context,
-                course=profile.course
+                course=profile.course,
+                source_info=source_info
             )
 
             # Create new summary with auto_generated status
@@ -697,10 +717,14 @@ def buy_summary():
         # Get updated stats
         stats = ScoringService.get_student_statistics(current_user.id)
 
+        # Get source information for display
+        source_info = topic.get_source_info()
+
         return jsonify({
             "success": True,
             "summary": summary.content,
             "topic_name": topic.topic_name,
+            "source": source_info.get('formatted', 'Fuente desconocida'),
             "message": "Resumen comprado correctamente por 15 puntos",
             "available_points": stats["available_points"],
             "is_reaccess": False

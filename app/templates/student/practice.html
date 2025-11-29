@@ -34,7 +34,8 @@
             <div id="exercise-display" class="d-none">
                 <div class="alert alert-info">
                     <strong>Tema:</strong> <span id="exercise-topic"></span><br>
-                    <strong>Dificultad:</strong> <span id="exercise-difficulty"></span>
+                    <strong>Dificultad:</strong> <span id="exercise-difficulty"></span><br>
+                    <strong>📚 Fuente:</strong> <span id="exercise-source"></span>
                 </div>
 
                 <div class="card mb-4">
@@ -153,7 +154,10 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bi bi-book-fill"></i> Resumen: <span id="summary-topic-name"></span></h5>
+                <div>
+                    <h5 class="modal-title mb-1"><i class="bi bi-book-fill"></i> Resumen: <span id="summary-topic-name"></span></h5>
+                    <p class="mb-0 small"><i class="bi bi-journal-bookmark"></i> <span id="summary-source"></span></p>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -309,6 +313,7 @@ function generateExercise() {
             document.getElementById('exercise-content').innerHTML = exerciseHTML;
             document.getElementById('exercise-topic').textContent = data.exercise.topic;
             document.getElementById('exercise-difficulty').textContent = data.exercise.difficulty;
+            document.getElementById('exercise-source').textContent = data.exercise.source || 'Fuente desconocida';
 
             // Populate procedures checkboxes
             displayProcedures(currentProcedures);
@@ -787,6 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Set modal content
                 document.getElementById('summary-topic-name').textContent = data.topic_name;
+                document.getElementById('summary-source').textContent = data.source || 'Fuente desconocida';
 
                 // Render markdown content
                 const summaryHtml = marked.parse(data.summary);

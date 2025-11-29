@@ -291,73 +291,76 @@ def delete_exercise(exercise_id):
 @teacher_required
 def generate_exercises():
     """Generate exercises in batch"""
+    from app.models.book import Book
+    from app.models.youtube_channel import YouTubeChannel
+
     topics = Topic.query.all()
+    books = Book.query.all()
+    channels = YouTubeChannel.query.all()
 
     if request.method == 'POST':
         try:
             data = request.json
-            topic_id = data.get('topic_id')
+            topic_ids = data.get('topic_ids', [])  # Multiple topics
             difficulty = data.get('difficulty', 'medium')
             quantity = data.get('quantity', 5)
 
-            topic = Topic.query.get(topic_id)
-            if not topic:
-                return jsonify({
-                    'success': False,
-                    'message': 'Tema no encontrado'
-                })
-
-            # Get RAG context
-            rag_service = RAGService()
-            context = rag_service.get_context_for_topic(topic_id, top_k=3)
-
-            if not context:
-                return jsonify({
-                    'success': False,
-                    'message': 'No se encontró contexto para este tema. Asegúrate de que el libro esté procesado.'
-                })
-
-            # Generate exercises
             ai_engine = AIEngineFactory.create()
+            rag_service = RAGService()
             generated_exercises = []
 
-            for i in range(quantity):
-                exercise_data = ai_engine.generate_exercise(
-                    topic=topic.topic_name,
-                    context=context,
-                    difficulty=difficulty,
-                    course=data.get('course', 'ESO')
-                )
+            for topic_id in topic_ids:
+                topic = Topic.query.get(topic_id)
+                if not topic:
+                    continue
 
-                # Convert solution and methodology to strings if needed
-                solution = exercise_data.get('solution', '')
-                if isinstance(solution, (dict, list)):
-                    solution = json.dumps(solution, ensure_ascii=False)
+                # Get RAG context
+                context = rag_service.get_context_for_topic(topic_id, top_k=3)
+                if not context:
+                    continue
 
-                methodology = exercise_data.get('methodology', '')
-                if isinstance(methodology, (dict, list)):
-                    methodology = json.dumps(methodology, ensure_ascii=False)
+                # Get source information
+                source_info = topic.get_source_info()
 
-                # Create exercise with pending_validation status
-                exercise = Exercise(
-                    topic_id=topic_id,
-                    content=exercise_data.get('content', ''),
-                    solution=solution,
-                    methodology=methodology,
-                    available_procedures=exercise_data.get('available_procedures', []),
-                    expected_procedures=exercise_data.get('expected_procedures', []),
-                    difficulty=difficulty,
-                    status='pending_validation',
-                    created_by_id=current_user.id
-                )
-                db.session.add(exercise)
-                generated_exercises.append(exercise)
+                # Generate exercises for this topic
+                for i in range(quantity):
+                    exercise_data = ai_engine.generate_exercise(
+                        topic=topic.topic_name,
+                        context=context,
+                        difficulty=difficulty,
+                        course=data.get('course', 'ESO'),
+                        source_info=source_info
+                    )
+
+                    # Convert solution and methodology to strings if needed
+                    solution = exercise_data.get('solution', '')
+                    if isinstance(solution, (dict, list)):
+                        solution = json.dumps(solution, ensure_ascii=False)
+
+                    methodology = exercise_data.get('methodology', '')
+                    if isinstance(methodology, (dict, list)):
+                        methodology = json.dumps(methodology, ensure_ascii=False)
+
+                    # Create exercise with pending_validation status
+                    exercise = Exercise(
+                        topic_id=topic_id,
+                        content=exercise_data.get('content', ''),
+                        solution=solution,
+                        methodology=methodology,
+                        available_procedures=exercise_data.get('available_procedures', []),
+                        expected_procedures=exercise_data.get('expected_procedures', []),
+                        difficulty=difficulty,
+                        status='pending_validation',
+                        created_by_id=current_user.id
+                    )
+                    db.session.add(exercise)
+                    generated_exercises.append(exercise)
 
             db.session.commit()
 
             return jsonify({
                 'success': True,
-                'message': f'{quantity} ejercicios generados correctamente',
+                'message': f'{len(generated_exercises)} ejercicios generados correctamente',
                 'exercise_ids': [ex.id for ex in generated_exercises]
             })
 
@@ -368,7 +371,7 @@ def generate_exercises():
                 'message': f'Error al generar ejercicios: {str(e)}'
             }), 500
 
-    return render_template('teacher/generate_exercises.html', topics=topics)
+    return render_template('teacher/generate_exercises.html', topics=topics, books=books, channels=channels)
 
 
 @teacher_bp.route('/create-exercise', methods=['GET', 'POST'])
@@ -543,7 +546,12 @@ def delete_summary(summary_id):
 @teacher_required
 def generate_summaries():
     """Generate summaries in batch"""
+    from app.models.book import Book
+    from app.models.youtube_channel import YouTubeChannel
+
     topics = Topic.query.all()
+    books = Book.query.all()
+    channels = YouTubeChannel.query.all()
 
     if request.method == 'POST':
         try:
@@ -569,10 +577,14 @@ def generate_summaries():
                 if not context:
                     continue
 
+                # Get source information
+                source_info = topic.get_source_info()
+
                 summary_content = ai_engine.generate_topic_summary(
                     topic=topic.topic_name,
                     context=context,
-                    course=data.get('course', 'ESO')
+                    course=data.get('course', 'ESO'),
+                    source_info=source_info
                 )
 
                 # Create with pending_validation status
@@ -596,7 +608,7 @@ def generate_summaries():
             db.session.rollback()
             return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
-    return render_template('teacher/generate_summaries.html', topics=topics)
+    return render_template('teacher/generate_summaries.html', topics=topics, books=books, channels=channels)
 
 
 @teacher_bp.route('/create-summary', methods=['GET', 'POST'])

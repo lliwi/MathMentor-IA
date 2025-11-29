@@ -22,7 +22,7 @@ class AIEngine(ABC):
         self.config = kwargs
 
     @abstractmethod
-    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None) -> Dict[str, Any]:
+    def generate_exercise(self, topic: str, context: str, difficulty: str = 'medium', course: str = None, source_info: Dict[str, str] = None) -> Dict[str, Any]:
         """
         Generate a math exercise based on topic and context
 
@@ -31,6 +31,7 @@ class AIEngine(ABC):
             context: RAG-retrieved context from textbook
             difficulty: Difficulty level (easy, medium, hard)
             course: Course level (e.g., "1º ESO")
+            source_info: Source information (book or video) with 'type', 'title', 'formatted' keys
 
         Returns:
             Dict with 'content', 'solution', 'methodology' keys
@@ -107,7 +108,7 @@ class AIEngine(ABC):
         pass
 
     @abstractmethod
-    def generate_topic_summary(self, topic: str, context: str, course: str = None) -> str:
+    def generate_topic_summary(self, topic: str, context: str, course: str = None, source_info: Dict[str, str] = None) -> str:
         """
         Generate a comprehensive summary of a topic for study
 
@@ -115,6 +116,7 @@ class AIEngine(ABC):
             topic: The topic name
             context: RAG-retrieved context from textbook
             course: Course level (e.g., "1º ESO")
+            source_info: Source information (book or video) with 'type', 'title', 'formatted' keys
 
         Returns:
             Formatted summary string with key concepts, formulas, and examples

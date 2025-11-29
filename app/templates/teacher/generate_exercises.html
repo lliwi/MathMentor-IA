@@ -17,14 +17,54 @@
                 <div class="card-body">
                     <form id="generateForm">
                         <div class="mb-3">
-                            <label for="topic" class="form-label">Tema *</label>
-                            <select class="form-select" id="topic" name="topic_id" required>
-                                <option value="">Selecciona un tema</option>
-                                {% for topic in topics %}
-                                <option value="{{ topic.id }}">{{ topic.topic_name }}</option>
-                                {% endfor %}
+                            <label for="source-filter" class="form-label">Filtrar por Fuente</label>
+                            <select class="form-select" id="source-filter" onchange="filterTopics()">
+                                <option value="">Todas las fuentes</option>
+                                <optgroup label="📚 Libros">
+                                    {% for book in books %}
+                                    <option value="book_{{ book.id }}">{{ book.title }} ({{ book.course }} - {{ book.subject }})</option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="🎥 Canales de YouTube">
+                                    {% for channel in channels %}
+                                    <option value="channel_{{ channel.id }}">{{ channel.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
                             </select>
-                            <div class="form-text">Selecciona el tema para los ejercicios</div>
+                            <div class="form-text">Filtra los temas por su fuente de origen</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Temas a generar *</label>
+                            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 10px;">
+                                {% for topic in topics %}
+                                <div class="form-check topic-item"
+                                     data-source-type="{{ topic.source_type }}"
+                                     data-book-id="{{ topic.book_id if topic.book_id else '' }}"
+                                     data-video-id="{{ topic.video_id if topic.video_id else '' }}"
+                                     data-channel-id="{{ topic.video.channel_id if topic.source_type == 'youtube_video' and topic.video else '' }}">
+                                    <input class="form-check-input topic-checkbox" type="checkbox"
+                                           value="{{ topic.id }}" id="topic{{ topic.id }}">
+                                    <label class="form-check-label" for="topic{{ topic.id }}">
+                                        {{ topic.topic_name }}
+                                        {% if topic.source_type == 'pdf_book' and topic.book %}
+                                            <small class="text-muted">(📚 {{ topic.book.title }})</small>
+                                        {% elif topic.source_type == 'youtube_video' and topic.video %}
+                                            <small class="text-muted">(🎥 {{ topic.video.channel.name if topic.video.channel else 'YouTube' }})</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text">Selecciona los temas para los que quieres generar ejercicios</div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">
+                                    Seleccionar todos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
+                                    Deseleccionar todos
+                                </button>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -109,21 +149,76 @@
 </div>
 
 <script>
+function filterTopics() {
+    const sourceFilter = document.getElementById('source-filter').value;
+    const topicItems = document.querySelectorAll('.topic-item');
+
+    // Deselect all checkboxes when filtering
+    document.querySelectorAll('.topic-checkbox').forEach(cb => cb.checked = false);
+
+    topicItems.forEach(item => {
+        const sourceType = item.dataset.sourceType;
+        const bookId = item.dataset.bookId;
+        const channelId = item.dataset.channelId;
+
+        // If no filter, show all
+        if (!sourceFilter) {
+            item.style.display = '';
+            return;
+        }
+
+        // Check if matches book filter
+        if (sourceFilter.startsWith('book_')) {
+            const filteredBookId = sourceFilter.replace('book_', '');
+            if (sourceType === 'pdf_book' && bookId === filteredBookId) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        }
+        // Check if matches channel filter
+        else if (sourceFilter.startsWith('channel_')) {
+            const filteredChannelId = sourceFilter.replace('channel_', '');
+            if (sourceType === 'youtube_video' && channelId === filteredChannelId) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        }
+    });
+}
+
+function selectAll() {
+    // Only select visible checkboxes
+    document.querySelectorAll('.topic-item').forEach(item => {
+        if (item.style.display !== 'none') {
+            const checkbox = item.querySelector('.topic-checkbox');
+            if (checkbox) checkbox.checked = true;
+        }
+    });
+}
+
+function deselectAll() {
+    document.querySelectorAll('.topic-checkbox').forEach(cb => cb.checked = false);
+}
+
 document.getElementById('generateForm').addEventListener('submit', function(e) {
     e.preventDefault();
 
+    const selectedTopics = Array.from(document.querySelectorAll('.topic-checkbox:checked'))
+        .map(cb => parseInt(cb.value));
+
+    if (selectedTopics.length === 0) {
+        alert('Por favor selecciona al menos un tema');
+        return;
+    }
+
     const formData = {
-        topic_id: document.getElementById('topic').value,
+        topic_ids: selectedTopics,
         difficulty: document.getElementById('difficulty').value,
         quantity: parseInt(document.getElementById('quantity').value),
         course: document.getElementById('course').value
     };
-
-    // Validate
-    if (!formData.topic_id) {
-        alert('Por favor selecciona un tema');
-        return;
-    }
 
     // Show progress
     document.getElementById('progressSection').style.display = 'block';
@@ -132,10 +227,11 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
 
     // Simulate progress (since actual generation might take time)
     let progress = 0;
+    const totalExercises = formData.topic_ids.length * formData.quantity;
     const progressInterval = setInterval(() => {
         progress += 5;
         if (progress <= 90) {
-            updateProgress(progress, `Generando ejercicio ${Math.floor(progress / (90 / formData.quantity))} de ${formData.quantity}...`);
+            updateProgress(progress, `Generando ejercicios para ${formData.topic_ids.length} tema(s)...`);
         }
     }, 500);
 

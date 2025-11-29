@@ -17,14 +17,41 @@
                 <div class="card-body">
                     <form id="generateForm">
                         <div class="mb-3">
+                            <label for="source-filter" class="form-label">Filtrar por Fuente</label>
+                            <select class="form-select" id="source-filter" onchange="filterTopics()">
+                                <option value="">Todas las fuentes</option>
+                                <optgroup label="📚 Libros">
+                                    {% for book in books %}
+                                    <option value="book_{{ book.id }}">{{ book.title }} ({{ book.course }} - {{ book.subject }})</option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="🎥 Canales de YouTube">
+                                    {% for channel in channels %}
+                                    <option value="channel_{{ channel.id }}">{{ channel.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
+                            <div class="form-text">Filtra los temas por su fuente de origen</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Temas a generar *</label>
                             <div style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 10px;">
                                 {% for topic in topics %}
-                                <div class="form-check">
+                                <div class="form-check topic-item"
+                                     data-source-type="{{ topic.source_type }}"
+                                     data-book-id="{{ topic.book_id if topic.book_id else '' }}"
+                                     data-video-id="{{ topic.video_id if topic.video_id else '' }}"
+                                     data-channel-id="{{ topic.video.channel_id if topic.source_type == 'youtube_video' and topic.video else '' }}">
                                     <input class="form-check-input topic-checkbox" type="checkbox"
                                            value="{{ topic.id }}" id="topic{{ topic.id }}">
                                     <label class="form-check-label" for="topic{{ topic.id }}">
                                         {{ topic.topic_name }}
+                                        {% if topic.source_type == 'pdf_book' and topic.book %}
+                                            <small class="text-muted">(📚 {{ topic.book.title }})</small>
+                                        {% elif topic.source_type == 'youtube_video' and topic.video %}
+                                            <small class="text-muted">(🎥 {{ topic.video.channel.name if topic.video.channel else 'YouTube' }})</small>
+                                        {% endif %}
                                     </label>
                                 </div>
                                 {% endfor %}
@@ -106,8 +133,53 @@
 </div>
 
 <script>
+function filterTopics() {
+    const sourceFilter = document.getElementById('source-filter').value;
+    const topicItems = document.querySelectorAll('.topic-item');
+
+    // Deselect all checkboxes when filtering
+    document.querySelectorAll('.topic-checkbox').forEach(cb => cb.checked = false);
+
+    topicItems.forEach(item => {
+        const sourceType = item.dataset.sourceType;
+        const bookId = item.dataset.bookId;
+        const channelId = item.dataset.channelId;
+
+        // If no filter, show all
+        if (!sourceFilter) {
+            item.style.display = '';
+            return;
+        }
+
+        // Check if matches book filter
+        if (sourceFilter.startsWith('book_')) {
+            const filteredBookId = sourceFilter.replace('book_', '');
+            if (sourceType === 'pdf_book' && bookId === filteredBookId) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        }
+        // Check if matches channel filter
+        else if (sourceFilter.startsWith('channel_')) {
+            const filteredChannelId = sourceFilter.replace('channel_', '');
+            if (sourceType === 'youtube_video' && channelId === filteredChannelId) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        }
+    });
+}
+
 function selectAll() {
-    document.querySelectorAll('.topic-checkbox').forEach(cb => cb.checked = true);
+    // Only select visible checkboxes
+    document.querySelectorAll('.topic-item').forEach(item => {
+        if (item.style.display !== 'none') {
+            const checkbox = item.querySelector('.topic-checkbox');
+            if (checkbox) checkbox.checked = true;
+        }
+    });
 }
 
 function deselectAll() {
