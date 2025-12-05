@@ -395,7 +395,7 @@ Crea un diagrama Mermaid que:
 - Represente visualmente la estructura del problema
 - Muestre las relaciones entre los datos conocidos y desconocidos
 - Sugiera el flujo lógico de resolución SIN resolverlo
-- Use el tipo de diagrama más apropiado (flowchart, graph, etc.)
+- Use SOLO graph TD (NO uses flowchart ni subgraphs)
 
 REGLAS IMPORTANTES:
 - NO incluyas cálculos específicos ni resultados numéricos
@@ -404,18 +404,27 @@ REGLAS IMPORTANTES:
 - El estudiante debe poder usar el diagrama para pensar por sí mismo
 - Mantén el diagrama orientativo, no resolutivo
 
+RESTRICCIONES TÉCNICAS (MUY IMPORTANTE):
+- NO uses subgraph (causa errores de renderizado)
+- NO uses saltos de línea dentro de los nodos
+- Usa solo texto corto por nodo (máximo 40 caracteres)
+- Identifica nodos con letras simples (A, B, C, D, E, etc.)
+- NO uses identificadores complejos
+- Máximo 8 nodos en el diagrama
+- Solo usa flechas simples: -->
+
 FORMATO:
 - Devuelve SOLO el código Mermaid, sin explicaciones adicionales
 - No incluyas bloques de código markdown (```mermaid)
-- Empieza directamente con el tipo de diagrama (ej: graph TD, flowchart LR, etc.)
+- Empieza con: graph TD
 - Usa etiquetas claras y concisas en español
 
-Ejemplo de formato esperado:
+Ejemplo de formato CORRECTO:
 graph TD
-    A[Datos del problema] --> B[Identificar qué se busca]
-    B --> C[Aplicar concepto clave]
-    C --> D[Realizar operaciones]
-    D --> E[Verificar resultado]"""
+    A[Datos del problema] --> B[Identificar incógnita]
+    B --> C[Aplicar fórmula]
+    C --> D[Calcular resultado]
+    D --> E[Verificar coherencia]"""
 
         messages = [
             {"role": "system", "content": "Eres un experto en visualización de problemas matemáticos que crea diagramas Mermaid claros y didácticos."},

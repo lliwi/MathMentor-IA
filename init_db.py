@@ -8,10 +8,8 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
 from app import create_app, db
-from app.models.user import User
-from app.models.student_profile import StudentProfile
-from app.models.student_score import StudentScore
-from app.models.course import Course
+# Import all models to ensure they are registered with SQLAlchemy
+from app.models import *
 from app.services.rag_service import RAGService
 
 

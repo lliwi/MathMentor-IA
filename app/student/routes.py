@@ -434,6 +434,8 @@ def submit_exercise():
 
         # Evaluate procedure selection
         is_correct_methodology = evaluation.get('is_correct_methodology', False)
+        methodology_feedback = None
+
         if exercise.expected_procedures and selected_procedures:
             # Check if selected procedures match expected ones
             expected_set = set(exercise.expected_procedures)
@@ -443,8 +445,26 @@ def submit_exercise():
             # (or at least contain all expected procedures)
             if expected_set.issubset(selected_set):
                 is_correct_methodology = True
+                methodology_feedback = "✓ Procedimientos correctos seleccionados"
             else:
                 is_correct_methodology = False
+                # Find missing and extra procedures
+                missing = expected_set - selected_set
+                extra = selected_set - expected_set
+
+                # Build feedback message
+                feedback_parts = []
+                if missing:
+                    missing_names = [p['name'] for p in exercise.available_procedures if p['id'] in missing]
+                    feedback_parts.append(f"⚠ Faltan procedimientos: {', '.join(missing_names)}")
+                if extra:
+                    extra_names = [p['name'] for p in exercise.available_procedures if p['id'] in extra]
+                    feedback_parts.append(f"ℹ Procedimientos adicionales: {', '.join(extra_names)}")
+
+                methodology_feedback = "\n".join(feedback_parts) if feedback_parts else "⚠ Procedimientos incorrectos"
+        elif exercise.expected_procedures and not selected_procedures:
+            is_correct_methodology = False
+            methodology_feedback = "⚠ No seleccionaste ningún procedimiento"
 
         # Calculate score
         score_data = ScoringService.calculate_score(
@@ -490,6 +510,7 @@ def submit_exercise():
         response_data = {
             'is_correct': evaluation.get('is_correct_result', False),
             'is_methodology_correct': is_correct_methodology,
+            'methodology_feedback': methodology_feedback,
             'feedback': detailed_feedback,
             'score': score_data['total_score'],
             'score_breakdown': score_data,
@@ -520,16 +541,104 @@ def submit_exercise():
 @student_required
 def scoreboard():
     """View personal scoreboard and statistics"""
+    from app.models.summary import Summary
+    from app.models.summary_usage import SummaryUsage
+    from datetime import datetime
+
     stats = ScoringService.get_student_statistics(current_user.id)
 
     # Get recent submissions
     recent_submissions = Submission.query.filter_by(
         student_id=current_user.id
-    ).order_by(Submission.submitted_at.desc()).limit(10).all()
+    ).order_by(Submission.submitted_at.desc()).limit(20).all()
+
+    # Calculate streak bonus for each submission by simulating streak progression
+    # Get all submissions in chronological order to calculate streaks
+    all_submissions = Submission.query.filter_by(
+        student_id=current_user.id
+    ).order_by(Submission.submitted_at.asc()).all()
+
+    # Build a map of submission_id -> streak_bonus
+    submission_bonuses = {}
+    current_streak = 0
+
+    for submission in all_submissions:
+        is_correct = submission.is_correct_result or submission.is_correct_methodology
+        if is_correct:
+            current_streak += 1
+            # Calculate bonus for this streak milestone
+            bonus = ScoringService.calculate_streak_bonus(current_streak)
+            submission_bonuses[submission.id] = bonus
+        else:
+            current_streak = 0
+            submission_bonuses[submission.id] = 0
+
+    # Attach bonus to recent submissions
+    for submission in recent_submissions:
+        submission.streak_bonus = submission_bonuses.get(submission.id, 0)
+
+    # Get summary purchases (first access = purchase)
+    summary_purchases = SummaryUsage.query.filter_by(
+        student_id=current_user.id
+    ).order_by(SummaryUsage.first_accessed_at.desc()).limit(20).all()
+
+    # Get hint purchases from database
+    from app.models.hint_purchase import HintPurchase
+    hint_purchases = HintPurchase.query.filter_by(
+        student_id=current_user.id
+    ).order_by(HintPurchase.purchased_at.desc()).limit(20).all()
+
+    # Create combined activity log
+    activities = []
+
+    # Add submissions as activities
+    for sub in recent_submissions:
+        activities.append({
+            'type': 'submission',
+            'date': sub.submitted_at,
+            'data': sub
+        })
+
+    # Add summary purchases as activities
+    for purchase in summary_purchases:
+        summary = Summary.query.get(purchase.summary_id)
+        if summary:
+            topic = Topic.query.get(summary.topic_id)
+            activities.append({
+                'type': 'purchase_summary',
+                'date': purchase.first_accessed_at,
+                'data': {
+                    'topic_name': topic.topic_name if topic else 'Desconocido',
+                    'points_paid': purchase.points_paid,
+                    'access_count': purchase.access_count
+                }
+            })
+
+    # Add hint purchases as activities
+    for hint in hint_purchases:
+        # Get topic through exercise
+        exercise = Exercise.query.get(hint.exercise_id)
+        topic = Topic.query.get(exercise.topic_id) if exercise else None
+        activities.append({
+            'type': 'purchase_hint',
+            'date': hint.purchased_at,
+            'data': {
+                'topic_name': topic.topic_name if topic else 'Desconocido',
+                'hint_level': hint.hint_level,
+                'hint_type': hint.hint_type,
+                'points_paid': hint.points_paid
+            }
+        })
+
+    # Sort activities by date (most recent first)
+    activities.sort(key=lambda x: x['date'], reverse=True)
+
+    # Limit to 15 most recent activities
+    activities = activities[:15]
 
     return render_template('student/scoreboard.html',
                          stats=stats,
-                         recent_submissions=recent_submissions)
+                         activities=activities)
 
 
 @student_bp.route('/buy-hint', methods=['POST'])
@@ -597,12 +706,28 @@ def buy_hint():
         session['hints_purchased'] = hints_purchased
         session.modified = True
 
+        # Register hint purchase in database
+        from app.models.hint_purchase import HintPurchase
+        hint_purchase = HintPurchase(
+            student_id=current_user.id,
+            exercise_id=exercise_id,
+            hint_level=hint_level,
+            hint_type=hint_type,
+            points_paid=5
+        )
+        db.session.add(hint_purchase)
+        db.session.commit()
+
+        # Get updated stats to return current points
+        stats = ScoringService.get_student_statistics(current_user.id)
+
         return jsonify({
             'success': True,
             'hint': hint,
             'hint_type': hint_type,
             'hint_level': hint_level,
             'hints_remaining': 2 - (hint_count + 1),
+            'available_points': stats['available_points'],
             'message': message
         })
 

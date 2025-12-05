@@ -113,9 +113,9 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" onclick="window.location.href='{{ url_for('student.scoreboard') }}';" style="cursor: pointer;">
             <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="bi bi-trophy"></i> Tu Progreso</h5>
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> Marcador</h5>
             </div>
             <div class="card-body text-center">
                 <div class="score-badge bg-primary text-white mb-3">
@@ -465,6 +465,19 @@ function displayFeedback(evaluation) {
     let feedbackContent = '';
     let actionButtons = '';
 
+    // Add methodology feedback if available
+    let methodologySection = '';
+    if (evaluation.methodology_feedback) {
+        const methodologyClass = evaluation.is_methodology_correct ? 'alert-success' : 'alert-warning';
+        const methodologyPoints = evaluation.is_methodology_correct ? '+5 puntos' : '0 puntos (perdiste +5)';
+        methodologySection = `
+            <div class="alert ${methodologyClass} mb-3">
+                <strong>Metodología (${methodologyPoints}):</strong><br>
+                ${evaluation.methodology_feedback.replace(/\n/g, '<br>')}
+            </div>
+        `;
+    }
+
     if (!isCorrect) {
         if (!hasRetried) {
             // First attempt failed - show simple message and retry button only
@@ -495,11 +508,33 @@ function displayFeedback(evaluation) {
         actionButtons = '<button class="btn btn-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle"></i> Nuevo Ejercicio</button>';
     }
 
+    // Build score breakdown
+    let scoreBreakdown = '<div class="mb-3">';
+    scoreBreakdown += `<p class="mb-1"><strong>Desglose de puntos:</strong></p>`;
+    scoreBreakdown += `<ul class="mb-2">`;
+    if (evaluation.score_breakdown) {
+        if (evaluation.score_breakdown.score_result > 0) {
+            scoreBreakdown += `<li>Resultado correcto: +${evaluation.score_breakdown.score_result} puntos</li>`;
+        }
+        if (evaluation.score_breakdown.score_development > 0) {
+            scoreBreakdown += `<li>Metodología correcta: +${evaluation.score_breakdown.score_development} puntos</li>`;
+        }
+        if (evaluation.score_breakdown.score_effort > 0) {
+            scoreBreakdown += `<li>Esfuerzo en reintento: +${evaluation.score_breakdown.score_effort} puntos</li>`;
+        }
+    }
+    if (evaluation.streak_bonus > 0) {
+        scoreBreakdown += `<li>Bonus por racha de ${evaluation.current_streak}: +${evaluation.streak_bonus} puntos</li>`;
+    }
+    scoreBreakdown += `</ul>`;
+    scoreBreakdown += `<p><strong>Total: ${evaluation.score + evaluation.streak_bonus} puntos</strong></p>`;
+    scoreBreakdown += `</div>`;
+
     feedbackDiv.innerHTML = `
         <div class="feedback-box ${feedbackClass}">
             <h4><i class="bi bi-${icon}"></i> ${title}</h4>
-            <p><strong>Puntos obtenidos:</strong> ${evaluation.score}</p>
-            ${evaluation.streak_bonus > 0 ? `<p><strong>¡Bonus por racha!</strong> +${evaluation.streak_bonus} puntos</p>` : ''}
+            ${scoreBreakdown}
+            ${methodologySection}
             <hr>
             ${feedbackContent}
             ${actionButtons}
@@ -561,18 +596,29 @@ function buyHint() {
                 const mermaidDiv = document.createElement('div');
                 mermaidDiv.className = 'mermaid';
                 mermaidDiv.id = mermaidId;
-                mermaidDiv.textContent = data.hint;
+
+                // Clean up Mermaid code for better compatibility
+                let mermaidCode = data.hint;
+                // Ensure proper formatting
+                mermaidCode = mermaidCode.trim();
+
+                mermaidDiv.textContent = mermaidCode;
                 hintContent.innerHTML = '';
                 hintContent.appendChild(mermaidDiv);
 
-                // Render Mermaid diagram
-                mermaid.run({ nodes: [mermaidDiv] }).catch(err => {
-                    console.error('Mermaid error:', err);
-                    hintContent.innerHTML = '<p class="text-danger">Error al renderizar el diagrama. Código Mermaid:</p>';
-                    const pre = document.createElement('pre');
-                    pre.textContent = data.hint;
-                    hintContent.appendChild(pre);
-                });
+                // Render Mermaid diagram with better error handling
+                setTimeout(() => {
+                    mermaid.run({ nodes: [mermaidDiv] }).catch(err => {
+                        console.error('Mermaid render error:', err);
+                        hintContent.innerHTML = `
+                            <div class="alert alert-warning">
+                                <strong><i class="bi bi-exclamation-triangle"></i> Diagrama no disponible</strong>
+                                <p class="mb-2">El esquema visual no pudo renderizarse. Aquí está el flujo en texto:</p>
+                                <pre class="bg-light p-3 rounded" style="white-space: pre-wrap; font-size: 0.9em;">${data.hint}</pre>
+                            </div>
+                        `;
+                    });
+                }, 100);
             }
 
             document.getElementById('hint-display').classList.remove('d-none');
@@ -587,10 +633,9 @@ function buyHint() {
                 btn.disabled = true;
             }
 
-            // Update points display
-            const stats = {{ stats|tojson }};
-            if (stats) {
-                document.getElementById('points-display').textContent = stats.available_points - (hintsPurchased * 5);
+            // Update points display with the current value from response
+            if (data.available_points !== undefined) {
+                document.getElementById('points-display').textContent = data.available_points;
             }
         } else {
             alert(data.message);

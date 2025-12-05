@@ -13,6 +13,7 @@ from app.models.student_score import StudentScore
 from app.models.document_embedding import DocumentEmbedding
 from app.models.summary import Summary
 from app.models.summary_usage import SummaryUsage
+from app.models.hint_purchase import HintPurchase
 
 __all__ = [
     'User',
@@ -26,5 +27,6 @@ __all__ = [
     'StudentScore',
     'DocumentEmbedding',
     'Summary',
-    'SummaryUsage'
+    'SummaryUsage',
+    'HintPurchase'
 ]

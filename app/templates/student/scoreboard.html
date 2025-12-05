@@ -113,7 +113,7 @@
     </div>
 </div>
 
-{% if recent_submissions %}
+{% if activities %}
 <div class="row mt-4">
     <div class="col-12">
         <div class="card">
@@ -121,29 +121,87 @@
                 <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial Reciente</h5>
             </div>
             <div class="card-body">
+                <div class="alert alert-info mb-3">
+                    <small><i class="bi bi-info-circle"></i> <strong>Historial completo:</strong> Ejercicios resueltos, compras de resúmenes (-15 pts) y compras de pistas (-5 pts).</small>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
                             <tr>
                                 <th>Fecha</th>
-                                <th>Ejercicio</th>
-                                <th>Resultado</th>
-                                <th>Puntos</th>
+                                <th>Actividad</th>
+                                <th>Tipo</th>
+                                <th>Desglose de Puntos</th>
+                                <th>Total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for submission in recent_submissions %}
+                            {% for activity in activities %}
                             <tr>
-                                <td>{{ submission.submitted_at.strftime('%d/%m/%Y %H:%M') }}</td>
-                                <td>{{ submission.exercise.topic.topic_name[:50] }}...</td>
-                                <td>
-                                    {% if submission.is_correct_result %}
-                                        <span class="badge bg-success">Correcto</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Incorrecto</span>
-                                    {% endif %}
-                                </td>
-                                <td><strong>+{{ submission.total_score }}</strong></td>
+                                <td>{{ activity.date.strftime('%d/%m/%Y %H:%M') }}</td>
+
+                                {% if activity.type == 'submission' %}
+                                    {% set submission = activity.data %}
+                                    <td>{{ submission.exercise.topic.topic_name[:50] }}...</td>
+                                    <td>
+                                        <span class="badge bg-primary"><i class="bi bi-pencil-square"></i> Ejercicio</span>
+                                        {% if submission.is_correct_result %}
+                                            <span class="badge bg-success">Correcto</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Incorrecto</span>
+                                        {% endif %}
+                                        {% if submission.is_correct_methodology %}
+                                            <span class="badge bg-info">Metodología ✓</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {% if submission.score_result > 0 %}
+                                            <span class="text-success">Resultado: +{{ submission.score_result }}</span><br>
+                                            {% endif %}
+                                            {% if submission.score_development > 0 %}
+                                            <span class="text-info">Metodología: +{{ submission.score_development }}</span><br>
+                                            {% endif %}
+                                            {% if submission.score_effort > 0 %}
+                                            <span class="text-warning">Esfuerzo: +{{ submission.score_effort }}</span><br>
+                                            {% endif %}
+                                            {% if submission.streak_bonus > 0 %}
+                                            <span class="text-danger">Bonus racha: +{{ submission.streak_bonus }}</span>
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td><strong class="text-success">+{{ submission.total_score + (submission.streak_bonus if submission.streak_bonus else 0) }}</strong></td>
+
+                                {% elif activity.type == 'purchase_summary' %}
+                                    {% set purchase = activity.data %}
+                                    <td>{{ purchase.topic_name[:50] }}...</td>
+                                    <td>
+                                        <span class="badge bg-warning"><i class="bi bi-book"></i> Compra Resumen</span>
+                                        {% if purchase.access_count > 1 %}
+                                            <span class="badge bg-secondary">Accedido {{ purchase.access_count }}x</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>
+                                            <span class="text-danger">Costo: -{{ purchase.points_paid }} puntos</span>
+                                        </small>
+                                    </td>
+                                    <td><strong class="text-danger">-{{ purchase.points_paid }}</strong></td>
+
+                                {% elif activity.type == 'purchase_hint' %}
+                                    {% set purchase = activity.data %}
+                                    <td>{{ purchase.topic_name[:50] }}...</td>
+                                    <td>
+                                        <span class="badge bg-secondary"><i class="bi bi-lightbulb"></i> Compra Pista {{ purchase.hint_level }}</span>
+                                        <span class="badge bg-light text-dark">{{ 'Texto' if purchase.hint_type == 'text' else 'Visual' }}</span>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            <span class="text-danger">Costo: -{{ purchase.points_paid }} puntos</span>
+                                        </small>
+                                    </td>
+                                    <td><strong class="text-danger">-{{ purchase.points_paid }}</strong></td>
+                                {% endif %}
                             </tr>
                             {% endfor %}
                         </tbody>
