@@ -1,133 +1,283 @@
 {% extends "base/base.html" %}
 
-{% block title %}Panel de Administrador - MathMentor IA{% endblock %}
+{% block title %}Panel de Administrador — MathMentor IA{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Admin Dashboard ── */
+.admin-hero {
+    background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 55%, #0e7490 100%);
+    border-radius: 20px;
+    padding: 2rem 2rem 1.5rem;
+    color: white;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-hero::before {
+    content: '';
+    position: absolute;
+    top: -50px; right: -50px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+}
+
+.admin-hero h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+}
+
+.admin-hero p { opacity: 0.65; font-size: 0.88rem; margin: 0; }
+
+/* Stats strip */
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.admin-stat {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.admin-stat:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px var(--card-hover-shadow);
+}
+
+.admin-stat .as-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+}
+
+.admin-stat .as-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-heading);
+}
+
+.admin-stat .as-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Action grid */
+.admin-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.admin-action {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-action::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 0 0 18px 18px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.admin-action.c-indigo::after  { background: linear-gradient(90deg,#6366f1,#8b5cf6); }
+.admin-action.c-green::after   { background: linear-gradient(90deg,#10b981,#06b6d4); }
+.admin-action.c-amber::after   { background: linear-gradient(90deg,#f59e0b,#ef4444); }
+.admin-action.c-cyan::after    { background: linear-gradient(90deg,#06b6d4,#6366f1); }
+.admin-action.c-slate::after   { background: linear-gradient(90deg,#64748b,#475569); }
+.admin-action.c-dark::after    { background: linear-gradient(90deg,#1e1b4b,#4c1d95); }
+
+.admin-action:hover {
+    border-color: transparent;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px var(--card-hover-shadow);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.admin-action:hover::after { opacity: 1; }
+
+.admin-action .aa-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+}
+
+.admin-action.c-indigo .aa-icon { background: rgba(99,102,241,0.12); color: #6366f1; }
+.admin-action.c-green .aa-icon  { background: rgba(16,185,129,0.12);  color: #10b981; }
+.admin-action.c-amber .aa-icon  { background: rgba(245,158,11,0.12);  color: #f59e0b; }
+.admin-action.c-cyan .aa-icon   { background: rgba(6,182,212,0.12);   color: #06b6d4; }
+.admin-action.c-slate .aa-icon  { background: rgba(100,116,139,0.12); color: #64748b; }
+.admin-action.c-dark .aa-icon   { background: rgba(99,102,241,0.08);  color: #6366f1; }
+
+.admin-action h5 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin: 0;
+}
+
+.admin-action p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.admin-action .aa-arrow {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 500;
+    font-size: 0.8rem;
+    transition: gap 0.2s ease;
+}
+
+.admin-action:hover .aa-arrow { gap: 0.5rem; }
+
+@media (max-width: 768px) {
+    .admin-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+    .admin-stats { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4"><i class="bi bi-speedometer2"></i> Panel de Administrador</h1>
+
+<!-- Hero -->
+<div class="admin-hero">
+    <div style="position:relative;z-index:1;">
+        <div style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; opacity:0.6; margin-bottom:0.4rem;">
+            Panel de Control
+        </div>
+        <h1><i class="bi bi-speedometer2 me-2"></i>Administración</h1>
+        <p>Gestiona contenido, estudiantes y configuración del sistema</p>
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-primary">{{ books_count }}</h3>
-                <p class="text-muted mb-0"><i class="bi bi-book"></i> Libros PDF</p>
-            </div>
-        </div>
+<!-- Stats -->
+<div class="admin-stats">
+    <div class="admin-stat">
+        <div class="as-icon" style="background:rgba(99,102,241,0.1); color:#6366f1;"><i class="bi bi-book"></i></div>
+        <div class="as-value">{{ books_count }}</div>
+        <div class="as-label">Libros PDF</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-danger">{{ channels_count }}</h3>
-                <p class="text-muted mb-0"><i class="bi bi-youtube"></i> Canales YouTube</p>
-            </div>
-        </div>
+    <div class="admin-stat">
+        <div class="as-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;"><i class="bi bi-youtube"></i></div>
+        <div class="as-value">{{ channels_count }}</div>
+        <div class="as-label">Canales YouTube</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-success">{{ students_count }}</h3>
-                <p class="text-muted mb-0"><i class="bi bi-people"></i> Estudiantes</p>
-            </div>
-        </div>
+    <div class="admin-stat">
+        <div class="as-icon" style="background:rgba(16,185,129,0.1); color:#10b981;"><i class="bi bi-people"></i></div>
+        <div class="as-value">{{ students_count }}</div>
+        <div class="as-label">Estudiantes</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-warning">{{ admins_count }}</h3>
-                <p class="text-muted mb-0"><i class="bi bi-shield-lock"></i> Administradores</p>
-            </div>
-        </div>
+    <div class="admin-stat">
+        <div class="as-icon" style="background:rgba(245,158,11,0.1); color:#f59e0b;"><i class="bi bi-shield-lock"></i></div>
+        <div class="as-value">{{ admins_count }}</div>
+        <div class="as-label">Admins</div>
+    </div>
+    <div class="admin-stat">
+        <div class="as-icon" style="background:rgba(6,182,212,0.1); color:#06b6d4;"><i class="bi bi-list-task"></i></div>
+        <div class="as-value">{{ topics_count }}</div>
+        <div class="as-label">Temas</div>
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-md-12">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-info">{{ topics_count }}</h3>
-                <p class="text-muted mb-0"><i class="bi bi-list-task"></i> Temas</p>
-            </div>
+<!-- Actions -->
+<div class="admin-actions">
+    <a href="{{ url_for('admin.content') }}" class="admin-action c-indigo">
+        <div class="aa-icon"><i class="bi bi-folder-fill"></i></div>
+        <div>
+            <h5>Gestionar Contenido</h5>
+            <p>Subir libros PDF y añadir canales de YouTube</p>
         </div>
-    </div>
+        <div class="aa-arrow">Ir a Contenido <i class="bi bi-arrow-right"></i></div>
+    </a>
+
+    <a href="{{ url_for('admin.students') }}" class="admin-action c-green">
+        <div class="aa-icon"><i class="bi bi-people-fill"></i></div>
+        <div>
+            <h5>Gestionar Estudiantes</h5>
+            <p>Asignar temas y gestionar perfiles</p>
+        </div>
+        <div class="aa-arrow">Ir a Estudiantes <i class="bi bi-arrow-right"></i></div>
+    </a>
+
+    <a href="{{ url_for('admin.admins') }}" class="admin-action c-amber">
+        <div class="aa-icon"><i class="bi bi-shield-lock-fill"></i></div>
+        <div>
+            <h5>Gestionar Admins</h5>
+            <p>Crear y gestionar administradores</p>
+        </div>
+        <div class="aa-arrow">Ir a Admins <i class="bi bi-arrow-right"></i></div>
+    </a>
+
+    <a href="{{ url_for('admin.ai_config') }}" class="admin-action c-cyan">
+        <div class="aa-icon"><i class="bi bi-cpu-fill"></i></div>
+        <div>
+            <h5>Configuración IA</h5>
+            <p>Configurar motores de IA y modelos</p>
+        </div>
+        <div class="aa-arrow">Configurar <i class="bi bi-arrow-right"></i></div>
+    </a>
+
+    <a href="{{ url_for('admin.courses') }}" class="admin-action c-slate">
+        <div class="aa-icon"><i class="bi bi-mortarboard-fill"></i></div>
+        <div>
+            <h5>Gestionar Cursos</h5>
+            <p>Crear y gestionar los cursos del sistema</p>
+        </div>
+        <div class="aa-arrow">Ir a Cursos <i class="bi bi-arrow-right"></i></div>
+    </a>
+
+    <a href="{{ url_for('admin.backups') }}" class="admin-action c-dark">
+        <div class="aa-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
+        <div>
+            <h5>Gestión de Backups</h5>
+            <p>Crear, descargar y restaurar copias de seguridad</p>
+        </div>
+        <div class="aa-arrow">Ir a Backups <i class="bi bi-arrow-right"></i></div>
+    </a>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="card text-white bg-primary">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-folder"></i> Gestionar Contenido</h5>
-                <p class="card-text">Subir libros PDF y añadir canales de YouTube</p>
-                <a href="{{ url_for('admin.content') }}" class="btn btn-light">Ir a Contenido</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-white bg-success">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-people"></i> Gestionar Estudiantes</h5>
-                <p class="card-text">Asignar temas y gestionar perfiles de estudiantes</p>
-                <a href="{{ url_for('admin.students') }}" class="btn btn-light">Ir a Estudiantes</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-white bg-warning">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-shield-lock"></i> Gestionar Administradores</h5>
-                <p class="card-text">Crear y gestionar usuarios administradores</p>
-                <a href="{{ url_for('admin.admins') }}" class="btn btn-light">Ir a Administradores</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-white bg-info">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-cpu"></i> Configuración IA</h5>
-                <p class="card-text">Configurar motores de IA y modelos</p>
-                <a href="{{ url_for('admin.ai_config') }}" class="btn btn-light">Configurar IA</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="card text-white bg-secondary">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-mortarboard"></i> Gestionar Cursos</h5>
-                <p class="card-text">Crear y gestionar los cursos del sistema</p>
-                <a href="{{ url_for('admin.courses') }}" class="btn btn-light">Ir a Cursos</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-8">
-        <div class="card text-white bg-dark">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-archive"></i> Gestión de Backups</h5>
-                <p class="card-text">Crear, descargar y restaurar copias de seguridad completas (base de datos + archivos PDF + embeddings RAG)</p>
-                <a href="{{ url_for('admin.backups') }}" class="btn btn-light">Ir a Backups</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4" style="display:none;">
-    <div class="col-md-12">
-        <div class="card text-white bg-dark">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-archive"></i> Gestión de Backups</h5>
-                <p class="card-text">Crear, descargar y restaurar copias de seguridad completas (base de datos + archivos PDF + embeddings RAG)</p>
-                <a href="{{ url_for('admin.backups') }}" class="btn btn-light">Ir a Backups</a>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}

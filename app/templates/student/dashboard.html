@@ -1,48 +1,276 @@
 {% extends "base/base.html" %}
 
-{% block title %}Mi Dashboard - MathMentor IA{% endblock %}
+{% block title %}Inicio — MathMentor IA{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Student Dashboard ── */
+.dash-hero {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #06b6d4 100%);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    color: white;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.dash-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+}
+
+.dash-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30px; left: 30%;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(6,182,212,0.15);
+}
+
+.dash-hero .greeting {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.75;
+    margin-bottom: 0.4rem;
+}
+
+.dash-hero h1 {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.dash-hero .sub {
+    opacity: 0.8;
+    font-size: 0.95rem;
+}
+
+/* Stats strip */
+.stats-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-pill {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-pill:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px var(--card-hover-shadow);
+}
+
+.stat-pill .sp-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.stat-pill .sp-icon.indigo { background: rgba(99,102,241,0.12); color: #6366f1; }
+.stat-pill .sp-icon.amber  { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.stat-pill .sp-icon.cyan   { background: rgba(6,182,212,0.12);  color: #06b6d4; }
+
+.stat-pill .sp-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text-heading);
+    line-height: 1;
+    margin-bottom: 0.15rem;
+}
+
+.stat-pill .sp-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Action tiles */
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.action-tile {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 1.75rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.action-tile.primary::before { background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(6,182,212,0.04)); }
+.action-tile.success::before { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(6,182,212,0.04)); }
+
+.action-tile:hover {
+    border-color: transparent;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px var(--card-hover-shadow);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.action-tile:hover::before { opacity: 1; }
+
+.action-tile .tile-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.action-tile.primary .tile-icon {
+    background: linear-gradient(135deg, #6366f1, #06b6d4);
+    color: white;
+    box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+}
+
+.action-tile.success .tile-icon {
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    color: white;
+    box-shadow: 0 4px 14px rgba(16,185,129,0.35);
+}
+
+.action-tile .tile-text h5 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--text-heading);
+}
+
+.action-tile .tile-text p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0;
+    line-height: 1.4;
+}
+
+.action-tile .tile-arrow {
+    margin-left: auto;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.action-tile:hover .tile-arrow { transform: translateX(4px); }
+
+@media (max-width: 576px) {
+    .stats-strip {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4"><i class="bi bi-house"></i> Bienvenido, {{ current_user.username }}</h1>
+
+<!-- Hero greeting -->
+<div class="dash-hero">
+    <div style="position:relative; z-index:1;">
+        <div class="greeting">Tu espacio de aprendizaje</div>
+        <h1>Hola, {{ current_user.username }} 👋</h1>
+        <p class="sub">¡Sigue practicando y sube tu nota! Cada ejercicio cuenta.</p>
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-pencil-square"></i> Practicar</h5>
-                <p class="card-text">Resuelve ejercicios personalizados y mejora tus habilidades matemáticas</p>
-                <a href="{{ url_for('student.practice') }}" class="btn btn-primary">Comenzar Práctica</a>
-            </div>
+<!-- Stats strip -->
+<div class="stats-strip">
+    <div class="stat-pill">
+        <div class="sp-icon indigo"><i class="bi bi-star-fill"></i></div>
+        <div>
+            <div class="sp-value">{{ current_user.student_score.available_points if current_user.student_score else 0 }}</div>
+            <div class="sp-label">Puntos</div>
         </div>
     </div>
-
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-trophy"></i> Mi Marcador</h5>
-                <p class="card-text">Consulta tu progreso, puntos y estadísticas</p>
-                <a href="{{ url_for('student.scoreboard') }}" class="btn btn-success">Ver Marcador</a>
-            </div>
+    <div class="stat-pill">
+        <div class="sp-icon amber"><i class="bi bi-fire"></i></div>
+        <div>
+            <div class="sp-value">{{ current_user.student_score.current_streak if current_user.student_score else 0 }}</div>
+            <div class="sp-label">Racha</div>
         </div>
     </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información Rápida</h5>
-            </div>
-            <div class="card-body">
-                <p><strong>Curso:</strong> {% if current_user.student_profile %}{{ current_user.student_profile.course }}{% else %}No asignado{% endif %}</p>
-                <p><strong>Puntos Disponibles:</strong> {% if current_user.student_score %}{{ current_user.student_score.available_points }}{% else %}0{% endif %}</p>
-                <p><strong>Racha Actual:</strong> {% if current_user.student_score %}{{ current_user.student_score.current_streak }}{% else %}0{% endif %}</p>
-            </div>
+    <div class="stat-pill">
+        <div class="sp-icon cyan"><i class="bi bi-mortarboard-fill"></i></div>
+        <div>
+            <div class="sp-value">{{ current_user.student_profile.course if current_user.student_profile else '—' }}</div>
+            <div class="sp-label">Curso</div>
         </div>
     </div>
 </div>
+
+<!-- Action tiles -->
+<div class="actions-grid">
+    <a href="{{ url_for('student.practice') }}" class="action-tile primary">
+        <div class="tile-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+        <div class="tile-text">
+            <h5>Practicar</h5>
+            <p>Resuelve ejercicios personalizados y mejora tus habilidades</p>
+        </div>
+        <i class="bi bi-arrow-right tile-arrow"></i>
+    </a>
+
+    <a href="{{ url_for('student.scoreboard') }}" class="action-tile success">
+        <div class="tile-icon"><i class="bi bi-trophy-fill"></i></div>
+        <div class="tile-text">
+            <h5>Mi Marcador</h5>
+            <p>Consulta tu progreso, puntos y estadísticas detalladas</p>
+        </div>
+        <i class="bi bi-arrow-right tile-arrow"></i>
+    </a>
+
+    <a href="{{ url_for('student.my_summaries') }}" class="action-tile primary">
+        <div class="tile-icon"><i class="bi bi-book-fill"></i></div>
+        <div class="tile-text">
+            <h5>Mis Resúmenes</h5>
+            <p>Accede a los resúmenes que has desbloqueado con tus puntos</p>
+        </div>
+        <i class="bi bi-arrow-right tile-arrow"></i>
+    </a>
+</div>
+
 {% endblock %}

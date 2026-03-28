@@ -1,275 +1,1092 @@
 {% extends "base/base.html" %}
 
-{% block title %}Practicar - MathMentor IA{% endblock %}
+{% block title %}Practicar — MathMentor IA{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Practice Page ── */
+.practice-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+/* ── Exercise Panel ── */
+.exercise-panel {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    overflow: hidden;
+    min-height: 400px;
+}
+
+/* Empty state */
+.empty-state {
+    padding: 3.5rem 2rem;
+    text-align: center;
+}
+
+.empty-state .empty-icon {
+    width: 72px; height: 72px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.1));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1.25rem;
+    color: #f59e0b;
+}
+
+.empty-state h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin-bottom: 0.4rem;
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    margin-bottom: 1.75rem;
+}
+
+.difficulty-selector {
+    display: inline-flex;
+    gap: 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    padding: 0.35rem;
+    margin-bottom: 1.5rem;
+}
+
+.difficulty-selector label {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.15s ease;
+    margin: 0;
+    user-select: none;
+}
+
+.difficulty-selector input[type="radio"] { display: none; }
+
+.difficulty-selector input:checked + label {
+    background: var(--bg-secondary);
+    color: var(--brand-primary);
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.btn-generate {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
+    border: none;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 0.75rem 2.5rem;
+    border-radius: 50px;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+    transition: all 0.25s ease;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+}
+
+.btn-generate:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(99,102,241,0.45);
+    color: white;
+}
+
+/* Exercise display */
+.exercise-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex; align-items: center; gap: 0.75rem;
+    background: var(--bg-tertiary);
+}
+
+.exercise-header .topic-pill {
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(6,182,212,0.08));
+    color: var(--brand-primary);
+    border: 1px solid rgba(99,102,241,0.2);
+    padding: 0.3rem 0.9rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.exercise-body {
+    padding: 1.5rem;
+}
+
+.exercise-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.exercise-label .el-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--brand-primary);
+    flex-shrink: 0;
+}
+
+#exercise-content.markdown-content {
+    font-size: 1.05rem;
+    line-height: 1.75;
+    color: var(--text-primary);
+}
+
+/* Answer area */
+.answer-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+#student-answer {
+    border-radius: 12px;
+    resize: vertical;
+    min-height: 90px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* Procedures */
+.procedures-section {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px dashed var(--border-color);
+}
+
+.procedures-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+/* Action buttons */
+.action-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.btn-submit {
+    flex: 1;
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    border: none;
+    color: white;
+    font-weight: 700;
+    padding: 0.7rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(16,185,129,0.3);
+    transition: all 0.2s ease;
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16,185,129,0.4);
+    color: white;
+}
+
+.btn-hint {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.88rem;
+    padding: 0.7rem 1.25rem;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.btn-hint:hover {
+    border-color: #f59e0b;
+    color: #f59e0b;
+    background: rgba(245,158,11,0.06);
+}
+
+/* Hint display */
+.hint-box {
+    margin-top: 1rem;
+    background: rgba(245,158,11,0.06);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+.hint-box h6 {
+    color: #f59e0b;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Feedback */
+.feedback-box {
+    margin-top: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 14px;
+    border-left: 4px solid var(--brand-primary);
+}
+
+.feedback-box.success {
+    background: rgba(16,185,129,0.06);
+    border-left-color: #10b981;
+}
+
+.feedback-box.error {
+    background: rgba(239,68,68,0.05);
+    border-left-color: #ef4444;
+}
+
+.feedback-box h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+/* ── Sidebar ── */
+.practice-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Score widget */
+.score-widget {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #06b6d4 100%);
+    border-radius: 18px;
+    padding: 1.5rem;
+    color: white;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-decoration: none;
+}
+
+.score-widget:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(99,102,241,0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.score-widget .sw-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+    margin-bottom: 0.25rem;
+}
+
+.score-widget .sw-points {
+    font-size: 2.75rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    background: linear-gradient(135deg, #fde68a, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.score-widget .sw-name {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    margin-bottom: 1rem;
+}
+
+.score-widget .sw-divider {
+    border-top: 1px solid rgba(255,255,255,0.15);
+    margin: 0.75rem 0;
+}
+
+.score-widget .sw-streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(255,255,255,0.15);
+    padding: 0.35rem 0.9rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.score-widget .sw-meta {
+    margin-top: 0.75rem;
+    font-size: 0.78rem;
+    opacity: 0.65;
+}
+
+/* Summaries panel */
+.sidebar-panel {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.sidebar-panel .sp-head {
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.sidebar-panel .sp-head .sp-icon {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.sidebar-panel .sp-body {
+    padding: 0.5rem;
+}
+
+.topic-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: 10px;
+    transition: background 0.15s ease;
+    font-size: 0.82rem;
+}
+
+.topic-row:hover { background: var(--bg-tertiary); }
+
+.topic-row .topic-name {
+    color: var(--text-primary);
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-topic-free {
+    background: rgba(6,182,212,0.1);
+    border: 1px solid rgba(6,182,212,0.25);
+    color: #06b6d4;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.btn-topic-free:hover { background: rgba(6,182,212,0.18); color: #06b6d4; }
+
+.btn-topic-buy {
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.25);
+    color: #10b981;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.btn-topic-buy:hover { background: rgba(16,185,129,0.18); color: #10b981; }
+
+/* Calculator tile */
+.calc-tile {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: left;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.calc-tile:hover {
+    border-color: var(--brand-primary);
+    color: var(--brand-primary);
+    background: rgba(99,102,241,0.04);
+}
+
+.calc-tile .ct-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: rgba(99,102,241,0.1);
+    color: #6366f1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* ── Modals ── */
+.modal-content {
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.modal-header-gradient {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
+    color: white;
+    padding: 1.1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+}
+
+.modal-header-gradient h5 {
+    font-weight: 700;
+    margin: 0;
+    font-size: 1rem;
+}
+
+.modal-header-gradient p {
+    opacity: 0.75;
+    font-size: 0.8rem;
+    margin: 0.2rem 0 0;
+}
+
+/* Calculator redesign */
+.calc-display-area {
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+#calc-input {
+    background: transparent;
+    border: none;
+    font-size: 1.75rem;
+    font-weight: 700;
+    text-align: right;
+    color: var(--text-heading);
+    padding: 0;
+    width: 100%;
+    box-shadow: none;
+}
+
+#calc-input:focus { outline: none; box-shadow: none; }
+
+#calc-fraction {
+    text-align: right;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    min-height: 20px;
+}
+
+.calc-format-toggle {
+    display: flex;
+    gap: 0.35rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 0.25rem;
+    margin-bottom: 0.9rem;
+}
+
+.calc-format-toggle label {
+    flex: 1;
+    text-align: center;
+    padding: 0.35rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin: 0;
+}
+
+.calc-format-toggle input { display: none; }
+.calc-format-toggle input:checked + label {
+    background: var(--bg-secondary);
+    color: var(--brand-primary);
+    box-shadow: 0 1px 4px var(--shadow);
+}
+
+.calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+}
+
+.cb {
+    padding: 0.7rem 0.25rem;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+}
+
+.cb:hover { transform: scale(1.05); border-color: var(--brand-primary); }
+.cb:active { transform: scale(0.96); }
+
+.cb.fn   { background: rgba(99,102,241,0.08); color: #6366f1; border-color: rgba(99,102,241,0.2); }
+.cb.op   { background: rgba(245,158,11,0.08); color: #f59e0b; border-color: rgba(245,158,11,0.2); }
+.cb.eq   { background: linear-gradient(135deg,#10b981,#06b6d4); color:white; border:none; box-shadow:0 3px 10px rgba(16,185,129,0.3); }
+.cb.clr  { background: rgba(239,68,68,0.08); color:#ef4444; border-color:rgba(239,68,68,0.2); }
+.cb.back { background: rgba(6,182,212,0.08); color:#06b6d4; border-color:rgba(6,182,212,0.2); }
+
+body.dark-mode .cb { background: var(--bg-tertiary); }
+
+@media (max-width: 991.98px) {
+    .practice-layout {
+        grid-template-columns: 1fr;
+    }
+    .practice-sidebar {
+        order: -1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .practice-sidebar { grid-template-columns: 1fr; }
+    .difficulty-selector { flex-direction: column; }
+    .action-row { flex-direction: column; }
+}
+
+/* ── Toast notifications ── */
+#toast-container {
+    position: fixed;
+    top: 5rem;
+    right: 1.25rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    pointer-events: none;
+}
+
+.custom-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 14px;
+    min-width: 280px;
+    max-width: 360px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    backdrop-filter: blur(10px);
+    pointer-events: all;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), opacity 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.custom-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.custom-toast.hiding {
+    transform: translateX(120%);
+    opacity: 0;
+}
+
+.custom-toast.toast-success {
+    background: rgba(16,185,129,0.12);
+    border-color: rgba(16,185,129,0.3);
+    color: var(--text-primary);
+}
+
+.custom-toast.toast-error {
+    background: rgba(239,68,68,0.1);
+    border-color: rgba(239,68,68,0.3);
+    color: var(--text-primary);
+}
+
+.custom-toast.toast-warning {
+    background: rgba(245,158,11,0.1);
+    border-color: rgba(245,158,11,0.3);
+    color: var(--text-primary);
+}
+
+.custom-toast.toast-info {
+    background: rgba(99,102,241,0.1);
+    border-color: rgba(99,102,241,0.3);
+    color: var(--text-primary);
+}
+
+.toast-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.toast-success .toast-icon { background: rgba(16,185,129,0.2); color: #10b981; }
+.toast-error .toast-icon   { background: rgba(239,68,68,0.2);  color: #ef4444; }
+.toast-warning .toast-icon { background: rgba(245,158,11,0.2); color: #f59e0b; }
+.toast-info .toast-icon    { background: rgba(99,102,241,0.2); color: #6366f1; }
+
+.toast-body { flex: 1; font-size: 0.88rem; line-height: 1.4; }
+.toast-body strong { display: block; font-size: 0.82rem; margin-bottom: 0.15rem; opacity: 0.7; }
+
+.toast-close {
+    background: none; border: none; padding: 0;
+    color: var(--text-secondary); cursor: pointer;
+    font-size: 1rem; line-height: 1; opacity: 0.5;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+.toast-close:hover { opacity: 1; }
+
+/* ── Custom Confirm Modal ── */
+.confirm-modal .modal-content {
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.confirm-modal .modal-body {
+    padding: 2rem 1.75rem 1.25rem;
+    text-align: center;
+    background: var(--bg-primary);
+}
+
+.confirm-modal .confirm-icon-wrap {
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.1));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 1.25rem;
+    color: #f59e0b;
+}
+
+.confirm-modal .confirm-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-heading);
+    margin-bottom: 0.5rem;
+}
+
+.confirm-modal #confirm-message {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.confirm-modal .modal-footer {
+    padding: 1rem 1.5rem;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-confirm-cancel {
+    flex: 1;
+    padding: 0.65rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-confirm-cancel:hover { border-color: var(--text-secondary); }
+
+.btn-confirm-ok {
+    flex: 1;
+    padding: 0.65rem;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: white;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(245,158,11,0.35);
+    transition: all 0.15s;
+}
+
+.btn-confirm-ok:hover { opacity: 0.9; transform: translateY(-1px); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h2 class="mb-4"><i class="bi bi-pencil-square"></i> Área de Práctica</h2>
-    </div>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 style="font-size:1.4rem; font-weight:800; letter-spacing:-0.02em; margin:0;">
+        <i class="bi bi-lightning-charge-fill me-2" style="color:#6366f1;"></i>Área de Práctica
+    </h2>
 </div>
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="exercise-container" id="exercise-area">
-            <div id="no-exercise" class="text-center py-5">
-                <i class="bi bi-lightbulb" style="font-size: 4rem; color: #ffc107;"></i>
-                <h4 class="mt-3">¿Listo para practicar?</h4>
-                <p class="text-muted">Genera un ejercicio para comenzar</p>
+<div class="practice-layout">
 
-                <div class="mt-4">
-                    <label class="form-label">Dificultad:</label>
-                    <select class="form-select w-50 mx-auto" id="difficulty-select">
-                        <option value="easy">Primeros pasos</option>
-                        <option value="medium" selected>Consolidación</option>
-                        <option value="hard">Preparación para exámen</option>
-                    </select>
-                </div>
+    <!-- ── Main exercise panel ── -->
+    <div class="exercise-panel" id="exercise-area">
 
-                <button class="btn btn-primary btn-lg mt-4" id="generate-btn">
-                    <i class="bi bi-stars"></i> Generar Ejercicio
-                </button>
+        <!-- Empty state -->
+        <div id="no-exercise" class="empty-state">
+            <div class="empty-icon"><i class="bi bi-lightbulb-fill"></i></div>
+            <h4>¿Listo para practicar?</h4>
+            <p>Genera un ejercicio personalizado para comenzar</p>
+
+            <!-- Difficulty pills -->
+            <div class="difficulty-selector" id="difficulty-selector-wrapper">
+                <input type="radio" name="diff" id="diff-easy" value="easy">
+                <label for="diff-easy">🌱 Primeros pasos</label>
+                <input type="radio" name="diff" id="diff-medium" value="medium" checked>
+                <label for="diff-medium">⚡ Consolidación</label>
+                <input type="radio" name="diff" id="diff-hard" value="hard">
+                <label for="diff-hard">🔥 Examen</label>
             </div>
 
-            <div id="exercise-display" class="d-none">
-                <div class="alert alert-info">
-                    <strong>Tema:</strong> <span id="exercise-topic"></span>
-                </div>
+            <!-- Hidden select kept for JS compatibility -->
+            <select id="difficulty-select" class="d-none">
+                <option value="easy">Primeros pasos</option>
+                <option value="medium" selected>Consolidación</option>
+                <option value="hard">Preparación para exámen</option>
+            </select>
 
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-question-circle"></i> Ejercicio</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="exercise-content" class="fs-5 markdown-content"></div>
-                    </div>
-                </div>
+            <button class="btn-generate" id="generate-btn">
+                <i class="bi bi-stars"></i> Generar Ejercicio
+            </button>
+        </div>
 
-                <div class="mb-3">
-                    <label for="student-answer" class="form-label"><strong>Tu Respuesta:</strong></label>
+        <!-- Exercise display -->
+        <div id="exercise-display" class="d-none">
+            <div class="exercise-header">
+                <i class="bi bi-question-circle" style="color:var(--brand-primary);"></i>
+                <span class="topic-pill" id="exercise-topic">—</span>
+                <span style="margin-left:auto; font-size:0.78rem; color:var(--text-secondary); font-weight:600;">
+                    <i class="bi bi-cpu me-1"></i>IA
+                </span>
+            </div>
+
+            <div class="exercise-body">
+                <div class="exercise-label">
+                    <span class="el-dot"></span> Enunciado
+                </div>
+                <div id="exercise-content" class="fs-5 markdown-content"></div>
+
+                <!-- Answer -->
+                <div class="answer-section">
+                    <div class="exercise-label mb-2">
+                        <span class="el-dot" style="background:#10b981;"></span> Tu Respuesta
+                    </div>
                     <textarea class="form-control" id="student-answer" rows="3" placeholder="Escribe tu respuesta aquí..."></textarea>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label"><strong>Procedimientos/Técnicas Utilizadas:</strong></label>
-                    <div class="card">
-                        <div class="card-body" id="procedures-list">
-                            <p class="text-muted">Selecciona todos los procedimientos, técnicas o propiedades que utilizaste para resolver este ejercicio.</p>
-                        </div>
+                <!-- Procedures -->
+                <div class="procedures-section">
+                    <div class="procedures-label">
+                        <i class="bi bi-list-check me-1"></i> Procedimientos y técnicas utilizadas
+                    </div>
+                    <div id="procedures-list">
+                        <p class="text-muted small">Selecciona todos los procedimientos, técnicas o propiedades que utilizaste para resolver este ejercicio.</p>
                     </div>
                 </div>
 
-                <div class="d-grid gap-2">
-                    <button class="btn btn-success btn-lg" id="submit-btn">
-                        <i class="bi bi-check-circle"></i> Enviar Respuesta
+                <!-- Action buttons -->
+                <div class="action-row">
+                    <button class="btn-submit" id="submit-btn">
+                        <i class="bi bi-check-circle-fill"></i> Enviar Respuesta
                     </button>
-                    <button class="btn btn-warning" id="hint-btn">
-                        <i class="bi bi-lightbulb"></i> <span id="hint-btn-text">Comprar Pista 1 (5 puntos)</span>
+                    <button class="btn-hint" id="hint-btn">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <span id="hint-btn-text">Pista 1 (5 pts)</span>
                     </button>
                 </div>
 
-                <div id="hint-display" class="alert alert-warning mt-3 d-none">
-                    <h6><i class="bi bi-lightbulb-fill"></i> <span id="hint-title">Pista:</span></h6>
+                <!-- Hint display -->
+                <div id="hint-display" class="hint-box d-none">
+                    <h6><i class="bi bi-lightbulb-fill me-1"></i><span id="hint-title">Pista:</span></h6>
                     <div id="hint-content"></div>
                 </div>
             </div>
-
-            <div id="feedback-display" class="d-none mt-4">
-                <!-- Feedback will be inserted here -->
-            </div>
         </div>
+
+        <!-- Feedback -->
+        <div id="feedback-display" class="d-none px-4 pb-4"></div>
     </div>
 
-    <div class="col-md-4">
-        <!-- Topic Summaries Card -->
-        <div class="card mb-3">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="bi bi-book"></i> Resúmenes de Temas</h5>
+    <!-- ── Sidebar ── -->
+    <div class="practice-sidebar">
+
+        <!-- Score widget -->
+        <a href="{{ url_for('student.scoreboard') }}" class="score-widget">
+            <div class="sw-label">Puntos disponibles</div>
+            <div class="sw-points" id="points-display">{{ stats.available_points if stats else 0 }}</div>
+            <div class="sw-name">tus estrellas</div>
+            <div class="sw-divider"></div>
+            <div class="sw-streak">
+                <i class="bi bi-fire"></i> Racha: <span id="streak-display">{{ stats.current_streak if stats else 0 }}</span>
             </div>
-            <div class="card-body">
-                <p class="small text-muted">Compra resúmenes para estudiar antes de practicar</p>
+            <div class="sw-meta">
+                Precisión {{ stats.accuracy_rate if stats else 0 }}% · {{ stats.total_exercises if stats else 0 }} ejercicios
+            </div>
+        </a>
+
+        <!-- Summaries -->
+        <div class="sidebar-panel">
+            <div class="sp-head">
+                <span class="sp-icon" style="background:rgba(16,185,129,0.12); color:#10b981;"><i class="bi bi-book-fill"></i></span>
+                Resúmenes de Temas
+            </div>
+            <div class="sp-body">
                 {% if topics %}
-                <div class="list-group list-group-flush">
                     {% for topic in topics %}
-                    <div class="list-group-item p-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="small">{{ topic.topic_name }}</span>
-                            {% if topic.id in purchased_topic_ids %}
-                            <button class="btn btn-sm btn-info buy-summary-btn" data-topic-id="{{ topic.id }}" data-topic-name="{{ topic.topic_name }}">
-                                <i class="bi bi-check-circle"></i> Ver (GRATIS)
-                            </button>
-                            {% else %}
-                            <button class="btn btn-sm btn-success buy-summary-btn" data-topic-id="{{ topic.id }}" data-topic-name="{{ topic.topic_name }}">
-                                <i class="bi bi-cart-plus"></i> 15pts
-                            </button>
-                            {% endif %}
-                        </div>
+                    <div class="topic-row">
+                        <span class="topic-name">{{ topic.topic_name }}</span>
+                        {% if topic.id in purchased_topic_ids %}
+                        <button class="btn-topic-free buy-summary-btn" data-topic-id="{{ topic.id }}" data-topic-name="{{ topic.topic_name }}">
+                            <i class="bi bi-check-circle me-1"></i>Ver
+                        </button>
+                        {% else %}
+                        <button class="btn-topic-buy buy-summary-btn" data-topic-id="{{ topic.id }}" data-topic-name="{{ topic.topic_name }}">
+                            15 pts
+                        </button>
+                        {% endif %}
                     </div>
                     {% endfor %}
-                </div>
                 {% else %}
-                <p class="text-muted small">No tienes temas asignados. Contacta con tu profesor.</p>
+                <p class="text-muted small px-1 py-2 mb-0">No tienes temas asignados. Contacta con tu profesor.</p>
                 {% endif %}
             </div>
         </div>
 
-        <div class="card" onclick="window.location.href='{{ url_for('student.scoreboard') }}';" style="cursor: pointer;">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="bi bi-trophy"></i> Marcador</h5>
+        <!-- Calculator -->
+        <button class="calc-tile" data-bs-toggle="modal" data-bs-target="#calculatorModal">
+            <span class="ct-icon"><i class="bi bi-calculator-fill"></i></span>
+            Calculadora Científica
+            <i class="bi bi-arrow-right ms-auto" style="font-size:0.85rem; opacity:0.4;"></i>
+        </button>
+
+    </div>
+</div>
+
+<!-- ── Toast container ── -->
+<div id="toast-container"></div>
+
+<!-- ── Custom Confirm Modal ── -->
+<div class="modal fade confirm-modal" id="confirmModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+        <div class="modal-content">
+            <div class="modal-body">
+                <div class="confirm-icon-wrap"><i class="bi bi-coin"></i></div>
+                <div class="confirm-title">Confirmar compra</div>
+                <p id="confirm-message"></p>
             </div>
-            <div class="card-body text-center">
-                <div class="score-badge bg-primary text-white mb-3">
-                    <span id="points-display">{{ stats.available_points if stats else 0 }}</span>
-                </div>
-                <p><strong>Puntos Disponibles</strong></p>
-
-                <hr>
-
-                <div class="streak-indicator mb-2">
-                    <i class="bi bi-fire"></i> Racha: <span id="streak-display">{{ stats.current_streak if stats else 0 }}</span>
-                </div>
-
-                <p class="text-muted small mt-3">
-                    <strong>Precisión:</strong> {{ stats.accuracy_rate if stats else 0 }}%<br>
-                    <strong>Ejercicios:</strong> {{ stats.total_exercises if stats else 0 }}
-                </p>
-            </div>
-        </div>
-
-        <!-- Scientific Calculator Button -->
-        <div class="card mt-3">
-            <div class="card-body text-center">
-                <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#calculatorModal">
-                    <i class="bi bi-calculator"></i> Calculadora Científica
+            <div class="modal-footer">
+                <button class="btn-confirm-cancel" id="confirm-cancel-btn">
+                    <i class="bi bi-x me-1"></i>Cancelar
+                </button>
+                <button class="btn-confirm-ok" id="confirm-ok-btn">
+                    <i class="bi bi-check me-1"></i>Confirmar
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Summary Modal -->
+<!-- ── Summary Modal ── -->
 <div class="modal fade" id="summaryModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header-gradient">
                 <div>
-                    <h5 class="modal-title mb-1"><i class="bi bi-book-fill"></i> Resumen: <span id="summary-topic-name"></span></h5>
-                    <p class="mb-0 small"><i class="bi bi-journal-bookmark"></i> <span id="summary-source"></span></p>
+                    <h5><i class="bi bi-book-fill me-2"></i><span id="summary-topic-name"></span></h5>
+                    <p><i class="bi bi-journal-bookmark me-1"></i><span id="summary-source"></span></p>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="padding:1.5rem;">
                 <div id="summary-content" class="markdown-content"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            <div class="modal-footer" style="border-top:1px solid var(--border-color); padding:1rem 1.5rem;">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Calculator Modal -->
+<!-- ── Calculator Modal ── -->
 <div class="modal fade" id="calculatorModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:340px;">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bi bi-calculator"></i> Calculadora Científica</h5>
+            <div class="modal-header-gradient">
+                <h5><i class="bi bi-calculator-fill me-2"></i>Calculadora Científica</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="padding:1.25rem;">
                 <div id="calculator">
                     <!-- Display -->
-                    <div class="calc-display mb-3">
-                        <input type="text" id="calc-input" class="form-control form-control-lg text-end" readonly value="0">
-                        <div id="calc-fraction" class="text-end text-muted small mt-1" style="min-height: 20px;"></div>
+                    <div class="calc-display-area">
+                        <input type="text" id="calc-input" readonly value="0">
+                        <div id="calc-fraction"></div>
                     </div>
 
-                    <!-- Format Toggle -->
-                    <div class="mb-3 text-center">
-                        <div class="btn-group" role="group">
-                            <input type="radio" class="btn-check" name="calc-format" id="format-decimal" checked>
-                            <label class="btn btn-outline-primary btn-sm" for="format-decimal">Decimal</label>
-
-                            <input type="radio" class="btn-check" name="calc-format" id="format-fraction">
-                            <label class="btn btn-outline-primary btn-sm" for="format-fraction">Fracción</label>
-                        </div>
+                    <!-- Format toggle -->
+                    <div class="calc-format-toggle">
+                        <input type="radio" class="btn-check" name="calc-format" id="format-decimal" checked>
+                        <label for="format-decimal">Decimal</label>
+                        <input type="radio" class="btn-check" name="calc-format" id="format-fraction">
+                        <label for="format-fraction">Fracción</label>
                     </div>
 
-                    <!-- Calculator Buttons -->
-                    <div class="calc-buttons">
-                        <div class="row g-2 mb-2">
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="sin">sin</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="cos">cos</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="tan">tan</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="sqrt">√</button></div>
-                        </div>
-                        <div class="row g-2 mb-2">
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="^">x^y</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="(">(</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value=")">)</button></div>
-                            <div class="col-3"><button class="btn btn-danger w-100 calc-btn" data-action="clear">C</button></div>
-                        </div>
-                        <div class="row g-2 mb-2">
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="7">7</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="8">8</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="9">9</button></div>
-                            <div class="col-3"><button class="btn btn-warning w-100 calc-btn" data-value="/">÷</button></div>
-                        </div>
-                        <div class="row g-2 mb-2">
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="4">4</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="5">5</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="6">6</button></div>
-                            <div class="col-3"><button class="btn btn-warning w-100 calc-btn" data-value="*">×</button></div>
-                        </div>
-                        <div class="row g-2 mb-2">
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="1">1</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="2">2</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="3">3</button></div>
-                            <div class="col-3"><button class="btn btn-warning w-100 calc-btn" data-value="-">−</button></div>
-                        </div>
-                        <div class="row g-2 mb-2">
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value="0">0</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 calc-btn" data-value=".">.</button></div>
-                            <div class="col-3"><button class="btn btn-success w-100 calc-btn" data-action="equals">=</button></div>
-                            <div class="col-3"><button class="btn btn-warning w-100 calc-btn" data-value="+">+</button></div>
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="pi">π</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="e">e</button></div>
-                            <div class="col-3"><button class="btn btn-info w-100 calc-btn" data-action="backspace">←</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn" data-value="%">%</button></div>
-                        </div>
+                    <!-- Buttons -->
+                    <div class="calc-grid">
+                        <button class="cb fn calc-btn" data-value="sin">sin</button>
+                        <button class="cb fn calc-btn" data-value="cos">cos</button>
+                        <button class="cb fn calc-btn" data-value="tan">tan</button>
+                        <button class="cb fn calc-btn" data-value="sqrt">√</button>
+
+                        <button class="cb fn calc-btn" data-value="^">xʸ</button>
+                        <button class="cb fn calc-btn" data-value="(">(</button>
+                        <button class="cb fn calc-btn" data-value=")">)</button>
+                        <button class="cb clr calc-btn" data-action="clear">C</button>
+
+                        <button class="cb calc-btn" data-value="7">7</button>
+                        <button class="cb calc-btn" data-value="8">8</button>
+                        <button class="cb calc-btn" data-value="9">9</button>
+                        <button class="cb op calc-btn" data-value="/">÷</button>
+
+                        <button class="cb calc-btn" data-value="4">4</button>
+                        <button class="cb calc-btn" data-value="5">5</button>
+                        <button class="cb calc-btn" data-value="6">6</button>
+                        <button class="cb op calc-btn" data-value="*">×</button>
+
+                        <button class="cb calc-btn" data-value="1">1</button>
+                        <button class="cb calc-btn" data-value="2">2</button>
+                        <button class="cb calc-btn" data-value="3">3</button>
+                        <button class="cb op calc-btn" data-value="-">−</button>
+
+                        <button class="cb calc-btn" data-value="0">0</button>
+                        <button class="cb calc-btn" data-value=".">.</button>
+                        <button class="cb eq calc-btn" data-action="equals">=</button>
+                        <button class="cb op calc-btn" data-value="+">+</button>
+
+                        <button class="cb fn calc-btn" data-value="pi">π</button>
+                        <button class="cb fn calc-btn" data-value="e">e</button>
+                        <button class="cb back calc-btn" data-action="backspace">←</button>
+                        <button class="cb fn calc-btn" data-value="%">%</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
-<!-- Marked.js for Markdown rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<!-- MathJax for LaTeX rendering (MathJax 3 no necesita polyfill.io) -->
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-<!-- Mermaid for diagram rendering -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<!-- Math.js for calculator with fraction support -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
 
 <script>
-// Configure marked to support line breaks
-marked.setOptions({
-    breaks: true,
-    gfm: true
+// ── UI Helpers ──
+const _confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'), { backdrop: 'static' });
+let _confirmResolve = null;
+
+document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+    _confirmModal.hide();
+    if (_confirmResolve) { _confirmResolve(true); _confirmResolve = null; }
+});
+document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+    _confirmModal.hide();
+    if (_confirmResolve) { _confirmResolve(false); _confirmResolve = null; }
+});
+document.getElementById('confirmModal').addEventListener('hidden.bs.modal', () => {
+    if (_confirmResolve) { _confirmResolve(false); _confirmResolve = null; }
 });
 
-// Initialize Mermaid
-mermaid.initialize({
-    startOnLoad: false,
-    theme: 'default',
-    securityLevel: 'loose'
+function customConfirm(message, title = 'Confirmar compra') {
+    document.querySelector('#confirmModal .confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    return new Promise(resolve => {
+        _confirmResolve = resolve;
+        _confirmModal.show();
+    });
+}
+
+const _toastIcons = {
+    success: 'bi-check-circle-fill',
+    error:   'bi-x-circle-fill',
+    warning: 'bi-exclamation-triangle-fill',
+    info:    'bi-info-circle-fill'
+};
+const _toastTitles = { success: 'Correcto', error: 'Error', warning: 'Atención', info: 'Info' };
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `custom-toast toast-${type}`;
+    el.innerHTML = `
+        <div class="toast-icon"><i class="bi ${_toastIcons[type]}"></i></div>
+        <div class="toast-body">
+            <strong>${_toastTitles[type]}</strong>
+            ${message}
+        </div>
+        <button class="toast-close" onclick="this.closest('.custom-toast').remove()">×</button>
+    `;
+    container.appendChild(el);
+    requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+    setTimeout(() => {
+        el.classList.add('hiding');
+        setTimeout(() => el.remove(), 350);
+    }, 4500);
+}
+
+// Sync pill selector with hidden select
+document.querySelectorAll('input[name="diff"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.getElementById('difficulty-select').value = this.value;
+    });
 });
+
+marked.setOptions({ breaks: true, gfm: true });
+mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
 
 let currentExerciseId = null;
 let currentProcedures = [];
@@ -289,9 +1106,7 @@ function generateExercise() {
 
     fetch('{{ url_for("student.generate_exercise") }}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ difficulty: difficulty })
     })
     .then(response => response.json())
@@ -299,19 +1114,16 @@ function generateExercise() {
         if (data.success) {
             currentExerciseId = data.exercise.id;
             currentProcedures = data.exercise.available_procedures || [];
-            hasRetried = false;  // Reset retry flag for new exercise
-            hintsPurchased = 0;  // Reset hints counter for new exercise
+            hasRetried = false;
+            hintsPurchased = 0;
 
-            // Reset hint button state
             document.getElementById('hint-btn').disabled = false;
-            document.getElementById('hint-btn-text').textContent = 'Comprar Pista 1 (5 puntos)';
+            document.getElementById('hint-btn-text').textContent = 'Pista 1 (5 pts)';
 
-            // Render markdown content to HTML
             const exerciseHTML = marked.parse(data.exercise.content);
             document.getElementById('exercise-content').innerHTML = exerciseHTML;
             document.getElementById('exercise-topic').textContent = data.exercise.topic;
 
-            // Populate procedures checkboxes
             displayProcedures(currentProcedures);
 
             document.getElementById('no-exercise').classList.add('d-none');
@@ -319,25 +1131,22 @@ function generateExercise() {
             document.getElementById('feedback-display').classList.add('d-none');
             document.getElementById('hint-display').classList.add('d-none');
 
-            // Clear previous answers
             document.getElementById('student-answer').value = '';
 
-            // Render LaTeX math with MathJax
             if (typeof MathJax !== 'undefined') {
-                MathJax.typesetPromise([document.getElementById('exercise-content')]).catch((err) => console.log('MathJax error:', err));
+                MathJax.typesetPromise([document.getElementById('exercise-content')]).catch(err => console.log('MathJax error:', err));
             }
 
-            // Trigger rolling prefetch: cache next exercise while student works
             prefetchNextExercise(data.exercise.topic_id, data.exercise.difficulty);
         } else {
-            alert('Error: ' + data.message);
+            showToast(data.message, 'error');
         }
 
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-stars"></i> Generar Ejercicio';
     })
     .catch(error => {
-        alert('Error al generar ejercicio');
+        showToast('No se pudo generar el ejercicio. Inténtalo de nuevo.', 'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-stars"></i> Generar Ejercicio';
     });
@@ -347,16 +1156,16 @@ function displayProcedures(procedures) {
     const listDiv = document.getElementById('procedures-list');
 
     if (!procedures || procedures.length === 0) {
-        listDiv.innerHTML = '<p class="text-muted">No hay procedimientos disponibles para este ejercicio.</p>';
+        listDiv.innerHTML = '<p class="text-muted small">No hay procedimientos disponibles para este ejercicio.</p>';
         return;
     }
 
-    let html = '<p class="text-muted mb-3">Selecciona todos los procedimientos, técnicas o propiedades que utilizaste:</p>';
+    let html = '<p class="text-muted small mb-2">Selecciona todos los procedimientos, técnicas o propiedades que utilizaste:</p>';
 
     procedures.forEach(proc => {
         const description = proc.description || 'Sin descripción disponible';
         html += `
-            <div class="form-check mb-2 procedure-item">
+            <div class="form-check mb-1 procedure-item">
                 <input class="form-check-input" type="checkbox" value="${proc.id}" id="proc-${proc.id}">
                 <label class="form-check-label" for="proc-${proc.id}"
                        data-bs-toggle="tooltip"
@@ -371,9 +1180,8 @@ function displayProcedures(procedures) {
 
     listDiv.innerHTML = html;
 
-    // Initialize Bootstrap tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
 }
 
 function getSelectedProcedures() {
@@ -382,40 +1190,23 @@ function getSelectedProcedures() {
 }
 
 function prefetchNextExercise(topicId, difficulty) {
-    // Rolling prefetch: cache next exercise while student works on current one
     fetch('{{ url_for("student.prefetch_next") }}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            topic_id: topicId,
-            difficulty: difficulty
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic_id: topicId, difficulty: difficulty })
     })
     .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('[RollingPrefetch] Next exercise caching started');
-        }
-    })
-    .catch(error => {
-        console.log('[RollingPrefetch] Failed to start:', error);
-    });
+    .then(data => { if (data.success) console.log('[RollingPrefetch] Next exercise caching started'); })
+    .catch(error => { console.log('[RollingPrefetch] Failed to start:', error); });
 }
 
 function submitExercise() {
     const answer = document.getElementById('student-answer').value;
     const selectedProcedures = getSelectedProcedures();
 
-    if (!answer.trim()) {
-        alert('Por favor escribe tu respuesta');
-        return;
-    }
-
+    if (!answer.trim()) { showToast('Escribe tu respuesta antes de enviar.', 'warning'); return; }
     if (currentProcedures.length > 0 && selectedProcedures.length === 0) {
-        alert('Por favor selecciona al menos un procedimiento/técnica utilizada');
-        return;
+        showToast('Selecciona al menos un procedimiento o técnica utilizada.', 'warning'); return;
     }
 
     const btn = document.getElementById('submit-btn');
@@ -424,9 +1215,7 @@ function submitExercise() {
 
     fetch('{{ url_for("student.submit_exercise") }}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             exercise_id: currentExerciseId,
             answer: answer,
@@ -441,16 +1230,15 @@ function submitExercise() {
             displayFeedback(data.evaluation);
             updateProgress(data.evaluation);
         } else {
-            alert('Error: ' + data.message);
+            showToast(data.message, 'error');
         }
-
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-circle"></i> Enviar Respuesta';
+        btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Enviar Respuesta';
     })
     .catch(error => {
-        alert('Error al evaluar ejercicio');
+        showToast('No se pudo evaluar la respuesta. Inténtalo de nuevo.', 'error');
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-circle"></i> Enviar Respuesta';
+        btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Enviar Respuesta';
     });
 }
 
@@ -461,17 +1249,17 @@ function displayFeedback(evaluation) {
     let feedbackClass = isCorrect ? 'success' : 'error';
     let icon = isCorrect ? 'check-circle-fill' : 'x-circle-fill';
     let title = isCorrect ? '¡Excelente! Respuesta correcta' : 'Respuesta incorrecta';
+    let iconColor = isCorrect ? '#10b981' : '#ef4444';
 
     let feedbackContent = '';
     let actionButtons = '';
 
-    // Add methodology feedback if available
     let methodologySection = '';
     if (evaluation.methodology_feedback) {
         const methodologyClass = evaluation.is_methodology_correct ? 'alert-success' : 'alert-warning';
         const methodologyPoints = evaluation.is_methodology_correct ? '+5 puntos' : '0 puntos (perdiste +5)';
         methodologySection = `
-            <div class="alert ${methodologyClass} mb-3">
+            <div class="alert ${methodologyClass} mb-3" style="border-radius:10px; border:none;">
                 <strong>Metodología (${methodologyPoints}):</strong><br>
                 ${evaluation.methodology_feedback.replace(/\n/g, '<br>')}
             </div>
@@ -480,62 +1268,48 @@ function displayFeedback(evaluation) {
 
     if (!isCorrect) {
         if (!hasRetried) {
-            // First attempt failed - show simple message and retry button only
             feedbackContent = '<p class="mb-3">Tu respuesta no es correcta. Intenta resolverlo de nuevo.</p>';
-            actionButtons = '<button class="btn btn-primary mt-3" onclick="retryExercise()"><i class="bi bi-arrow-repeat"></i> Reintentar (+3 puntos por esfuerzo)</button>';
+            actionButtons = '<button class="btn btn-primary mt-3" onclick="retryExercise()"><i class="bi bi-arrow-repeat me-1"></i> Reintentar (+3 pts por esfuerzo)</button>';
         } else {
-            // Second attempt failed - show detailed feedback and solution
             const feedbackHTML = marked.parse(evaluation.feedback);
             feedbackContent = `
-                <div class="feedback-text markdown-content">
-                    ${feedbackHTML}
-                </div>
-                <div class="alert alert-info mt-3">
-                    <h6><i class="bi bi-info-circle"></i> Solución:</h6>
+                <div class="feedback-text markdown-content">${feedbackHTML}</div>
+                <div class="alert alert-info mt-3" style="border-radius:10px; border:none;">
+                    <h6><i class="bi bi-info-circle me-1"></i>Solución:</h6>
                     <div class="markdown-content">${evaluation.solution ? marked.parse(evaluation.solution) : 'No disponible'}</div>
                 </div>
             `;
-            actionButtons = '<button class="btn btn-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle"></i> Nuevo Ejercicio</button>';
+            actionButtons = '<button class="btn btn-outline-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle me-1"></i> Nuevo Ejercicio</button>';
         }
     } else {
-        // Correct answer - show detailed feedback and new exercise button
         const feedbackHTML = marked.parse(evaluation.feedback);
-        feedbackContent = `
-            <div class="feedback-text markdown-content">
-                ${feedbackHTML}
-            </div>
-        `;
-        actionButtons = '<button class="btn btn-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle"></i> Nuevo Ejercicio</button>';
+        feedbackContent = `<div class="feedback-text markdown-content">${feedbackHTML}</div>`;
+        actionButtons = '<button class="btn btn-outline-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle me-1"></i> Nuevo Ejercicio</button>';
     }
 
-    // Build score breakdown
     let scoreBreakdown = '<div class="mb-3">';
-    scoreBreakdown += `<p class="mb-1"><strong>Desglose de puntos:</strong></p>`;
-    scoreBreakdown += `<ul class="mb-2">`;
+    scoreBreakdown += `<p class="mb-1" style="font-size:0.82rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-secondary);">Desglose de puntos</p>`;
+    scoreBreakdown += `<ul class="mb-2" style="font-size:0.9rem;">`;
     if (evaluation.score_breakdown) {
-        if (evaluation.score_breakdown.score_result > 0) {
-            scoreBreakdown += `<li>Resultado correcto: +${evaluation.score_breakdown.score_result} puntos</li>`;
-        }
-        if (evaluation.score_breakdown.score_development > 0) {
-            scoreBreakdown += `<li>Metodología correcta: +${evaluation.score_breakdown.score_development} puntos</li>`;
-        }
-        if (evaluation.score_breakdown.score_effort > 0) {
-            scoreBreakdown += `<li>Esfuerzo en reintento: +${evaluation.score_breakdown.score_effort} puntos</li>`;
-        }
+        if (evaluation.score_breakdown.score_result > 0)
+            scoreBreakdown += `<li>Resultado correcto: <strong>+${evaluation.score_breakdown.score_result} pts</strong></li>`;
+        if (evaluation.score_breakdown.score_development > 0)
+            scoreBreakdown += `<li>Metodología correcta: <strong>+${evaluation.score_breakdown.score_development} pts</strong></li>`;
+        if (evaluation.score_breakdown.score_effort > 0)
+            scoreBreakdown += `<li>Esfuerzo en reintento: <strong>+${evaluation.score_breakdown.score_effort} pts</strong></li>`;
     }
-    if (evaluation.streak_bonus > 0) {
-        scoreBreakdown += `<li>Bonus por racha de ${evaluation.current_streak}: +${evaluation.streak_bonus} puntos</li>`;
-    }
+    if (evaluation.streak_bonus > 0)
+        scoreBreakdown += `<li>Bonus racha ${evaluation.current_streak}: <strong>+${evaluation.streak_bonus} pts</strong></li>`;
     scoreBreakdown += `</ul>`;
-    scoreBreakdown += `<p><strong>Total: ${evaluation.score + evaluation.streak_bonus} puntos</strong></p>`;
+    scoreBreakdown += `<p style="font-weight:800; font-size:1rem;">Total: ${evaluation.score + evaluation.streak_bonus} puntos</p>`;
     scoreBreakdown += `</div>`;
 
     feedbackDiv.innerHTML = `
         <div class="feedback-box ${feedbackClass}">
-            <h4><i class="bi bi-${icon}"></i> ${title}</h4>
+            <h4 style="color:${iconColor};"><i class="bi bi-${icon} me-2"></i>${title}</h4>
             ${scoreBreakdown}
             ${methodologySection}
-            <hr>
+            <hr style="border-color:var(--border-color);">
             ${feedbackContent}
             ${actionButtons}
         </div>
@@ -543,9 +1317,8 @@ function displayFeedback(evaluation) {
 
     feedbackDiv.classList.remove('d-none');
 
-    // Render LaTeX math with MathJax
     if (typeof MathJax !== 'undefined') {
-        MathJax.typesetPromise([feedbackDiv]).catch((err) => console.log('MathJax error:', err));
+        MathJax.typesetPromise([feedbackDiv]).catch(err => console.log('MathJax error:', err));
     }
 }
 
@@ -554,13 +1327,14 @@ function updateProgress(evaluation) {
     document.getElementById('streak-display').textContent = evaluation.current_streak;
 }
 
-function buyHint() {
+async function buyHint() {
     if (!currentExerciseId) return;
 
     const hintLevel = hintsPurchased + 1;
-    const hintTypeName = hintLevel === 1 ? 'textual' : 'esquema visual';
+    const hintTypeName = hintLevel === 1 ? 'sugerencia textual' : 'esquema visual';
 
-    if (!confirm(`¿Comprar pista ${hintLevel} (${hintTypeName}) por 5 puntos?`)) return;
+    const ok = await customConfirm(`Pista ${hintLevel} — ${hintTypeName}\n\nSe descontarán 5 puntos de tu saldo.`);
+    if (!ok) return;
 
     const btn = document.getElementById('hint-btn');
     btn.disabled = true;
@@ -568,9 +1342,7 @@ function buyHint() {
 
     fetch('{{ url_for("student.buy_hint") }}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ exercise_id: currentExerciseId })
     })
     .then(response => response.json())
@@ -578,43 +1350,31 @@ function buyHint() {
         if (data.success) {
             hintsPurchased = data.hint_level;
 
-            // Update hint display based on type
             const hintContent = document.getElementById('hint-content');
             const hintTitle = document.getElementById('hint-title');
 
             if (data.hint_type === 'text') {
-                // Text hint - use textContent to avoid escaping issues
                 hintTitle.textContent = 'Pista 1 - Sugerencia:';
                 const p = document.createElement('p');
                 p.textContent = data.hint;
                 hintContent.innerHTML = '';
                 hintContent.appendChild(p);
             } else if (data.hint_type === 'visual') {
-                // Visual scheme with Mermaid
                 hintTitle.textContent = 'Pista 2 - Esquema Visual:';
                 const mermaidId = 'mermaid-' + Date.now();
                 const mermaidDiv = document.createElement('div');
                 mermaidDiv.className = 'mermaid';
                 mermaidDiv.id = mermaidId;
-
-                // Clean up Mermaid code for better compatibility
-                let mermaidCode = data.hint;
-                // Ensure proper formatting
-                mermaidCode = mermaidCode.trim();
-
-                mermaidDiv.textContent = mermaidCode;
+                mermaidDiv.textContent = data.hint.trim();
                 hintContent.innerHTML = '';
                 hintContent.appendChild(mermaidDiv);
 
-                // Render Mermaid diagram with better error handling
                 setTimeout(() => {
                     mermaid.run({ nodes: [mermaidDiv] }).catch(err => {
-                        console.error('Mermaid render error:', err);
                         hintContent.innerHTML = `
-                            <div class="alert alert-warning">
+                            <div class="alert alert-warning" style="border-radius:10px;">
                                 <strong><i class="bi bi-exclamation-triangle"></i> Diagrama no disponible</strong>
-                                <p class="mb-2">El esquema visual no pudo renderizarse. Aquí está el flujo en texto:</p>
-                                <pre class="bg-light p-3 rounded" style="white-space: pre-wrap; font-size: 0.9em;">${data.hint}</pre>
+                                <pre class="bg-light p-3 rounded mt-2" style="white-space:pre-wrap;font-size:.9em;">${data.hint}</pre>
                             </div>
                         `;
                     });
@@ -623,66 +1383,56 @@ function buyHint() {
 
             document.getElementById('hint-display').classList.remove('d-none');
 
-            // Update button state - fix order to avoid null reference
             if (data.hints_remaining > 0) {
-                // First update innerHTML, then enable
-                btn.innerHTML = '<i class="bi bi-lightbulb"></i> <span id="hint-btn-text">Comprar Pista ' + (hintsPurchased + 1) + ' (5 puntos)</span>';
+                btn.innerHTML = '<i class="bi bi-lightbulb-fill"></i> <span id="hint-btn-text">Pista ' + (hintsPurchased + 1) + ' (5 pts)</span>';
                 btn.disabled = false;
             } else {
-                btn.innerHTML = '<i class="bi bi-lightbulb"></i> Todas las pistas compradas';
+                btn.innerHTML = '<i class="bi bi-lightbulb-fill"></i> Todas las pistas compradas';
                 btn.disabled = true;
             }
 
-            // Update points display with the current value from response
             if (data.available_points !== undefined) {
                 document.getElementById('points-display').textContent = data.available_points;
             }
         } else {
-            alert(data.message);
-            btn.innerHTML = '<i class="bi bi-lightbulb"></i> <span id="hint-btn-text">Comprar Pista ' + (hintsPurchased + 1) + ' (5 puntos)</span>';
+            showToast(data.message, 'warning');
+            btn.innerHTML = '<i class="bi bi-lightbulb-fill"></i> <span id="hint-btn-text">Pista ' + (hintsPurchased + 1) + ' (5 pts)</span>';
             btn.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error al comprar pista');
-        btn.innerHTML = '<i class="bi bi-lightbulb"></i> <span id="hint-btn-text">Comprar Pista ' + (hintsPurchased + 1) + ' (5 puntos)</span>';
+        showToast('No se pudo comprar la pista. Inténtalo de nuevo.', 'error');
+        btn.innerHTML = '<i class="bi bi-lightbulb-fill"></i> <span id="hint-btn-text">Pista ' + (hintsPurchased + 1) + ' (5 pts)</span>';
         btn.disabled = false;
     });
 }
 
 function retryExercise() {
-    hasRetried = true;  // Mark that student is retrying
+    hasRetried = true;
     document.getElementById('feedback-display').classList.add('d-none');
     document.getElementById('student-answer').value = '';
-
-    // Uncheck all procedures
-    const checkboxes = document.querySelectorAll('#procedures-list input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = false);
-
+    document.querySelectorAll('#procedures-list input[type="checkbox"]').forEach(cb => cb.checked = false);
     document.getElementById('student-answer').focus();
 }
 
 function newExercise() {
-    hasRetried = false;  // Reset retry flag
-    hintsPurchased = 0;  // Reset hints counter
+    hasRetried = false;
+    hintsPurchased = 0;
     document.getElementById('exercise-display').classList.add('d-none');
     document.getElementById('feedback-display').classList.add('d-none');
     document.getElementById('hint-display').classList.add('d-none');
     document.getElementById('no-exercise').classList.remove('d-none');
-
-    // Reset hint button
     document.getElementById('hint-btn').disabled = false;
-    document.getElementById('hint-btn-text').textContent = 'Comprar Pista 1 (5 puntos)';
+    document.getElementById('hint-btn-text').textContent = 'Pista 1 (5 pts)';
 }
 
-// ============ SCIENTIFIC CALCULATOR ============
+// ── CALCULATOR ──
 let calcExpression = '';
 let calcResult = null;
 let calcShowFraction = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Calculator button handlers
     const calcButtons = document.querySelectorAll('.calc-btn');
     const calcInput = document.getElementById('calc-input');
     const calcFraction = document.getElementById('calc-fraction');
@@ -693,46 +1443,28 @@ document.addEventListener('DOMContentLoaded', function() {
             const action = this.dataset.action;
 
             if (action === 'clear') {
-                calcExpression = '';
-                calcResult = null;
-                updateCalcDisplay();
+                calcExpression = ''; calcResult = null; updateCalcDisplay();
             } else if (action === 'backspace') {
-                calcExpression = calcExpression.slice(0, -1);
-                updateCalcDisplay();
+                calcExpression = calcExpression.slice(0, -1); updateCalcDisplay();
             } else if (action === 'equals') {
                 calculateResult();
             } else if (value) {
-                // Add value to expression
-                if (calcExpression === '0' && value !== '.') {
-                    calcExpression = value;
-                } else {
-                    calcExpression += value;
-                }
+                if (calcExpression === '0' && value !== '.') calcExpression = value;
+                else calcExpression += value;
                 updateCalcDisplay();
             }
         });
     });
 
-    // Format toggle handlers
     document.getElementById('format-decimal').addEventListener('change', function() {
-        if (this.checked) {
-            calcShowFraction = false;
-            updateCalcDisplay();
-        }
+        if (this.checked) { calcShowFraction = false; updateCalcDisplay(); }
     });
-
     document.getElementById('format-fraction').addEventListener('change', function() {
-        if (this.checked) {
-            calcShowFraction = true;
-            updateCalcDisplay();
-        }
+        if (this.checked) { calcShowFraction = true; updateCalcDisplay(); }
     });
 
-    // Reset calculator when modal is opened
     document.getElementById('calculatorModal').addEventListener('show.bs.modal', function() {
-        calcExpression = '';
-        calcResult = null;
-        calcShowFraction = false;
+        calcExpression = ''; calcResult = null; calcShowFraction = false;
         document.getElementById('format-decimal').checked = true;
         updateCalcDisplay();
     });
@@ -742,7 +1474,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const calcFraction = document.getElementById('calc-fraction');
 
         if (calcResult !== null) {
-            // Show result
             if (calcShowFraction) {
                 try {
                     const frac = math.fraction(calcResult);
@@ -754,20 +1485,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } else {
                 calcInput.value = parseFloat(calcResult.toPrecision(10));
-                // Show fraction equivalent
                 try {
                     const frac = math.fraction(calcResult);
-                    if (frac.d !== 1 && frac.d < 1000) {
-                        calcFraction.textContent = `= ${frac.n}/${frac.d}`;
-                    } else {
-                        calcFraction.textContent = '';
-                    }
-                } catch (e) {
-                    calcFraction.textContent = '';
-                }
+                    if (frac.d !== 1 && frac.d < 1000) calcFraction.textContent = `= ${frac.n}/${frac.d}`;
+                    else calcFraction.textContent = '';
+                } catch (e) { calcFraction.textContent = ''; }
             }
         } else {
-            // Show expression
             calcInput.value = calcExpression || '0';
             calcFraction.textContent = '';
         }
@@ -775,101 +1499,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function calculateResult() {
         if (!calcExpression) return;
-
         try {
-            // Replace common symbols
-            let expr = calcExpression
-                .replace(/×/g, '*')
-                .replace(/÷/g, '/')
-                .replace(/−/g, '-')
-                .replace(/π/g, 'pi')
-                .replace(/sqrt/g, 'sqrt');
-
-            // Evaluate expression using math.js
+            let expr = calcExpression.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/π/g,'pi').replace(/sqrt/g,'sqrt');
             calcResult = math.evaluate(expr);
             calcExpression = '';
             updateCalcDisplay();
         } catch (error) {
             alert('Error en la expresión: ' + error.message);
-            calcExpression = '';
-            calcResult = null;
-            updateCalcDisplay();
+            calcExpression = ''; calcResult = null; updateCalcDisplay();
         }
     }
 });
 
-// Summary purchase functionality
+// ── SUMMARIES ──
 document.addEventListener('DOMContentLoaded', function() {
     const summaryModal = new bootstrap.Modal(document.getElementById('summaryModal'));
 
-    // Use event delegation to handle clicks on summary buttons (works even after content changes)
     document.addEventListener('click', function(e) {
-        // Check if clicked element or its parent is a buy-summary-btn
         const btn = e.target.closest('.buy-summary-btn');
         if (!btn) return;
-
         e.preventDefault();
 
         const topicId = btn.dataset.topicId;
         const topicName = btn.dataset.topicName;
         const originalHtml = btn.innerHTML;
 
-        // Disable button and show loading
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
         fetch('{{ url_for("student.buy_summary") }}', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ topic_id: parseInt(topicId) })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update points display
                 document.getElementById('points-display').textContent = data.available_points;
-
-                // Set modal content
                 document.getElementById('summary-topic-name').textContent = data.topic_name;
                 document.getElementById('summary-source').textContent = data.source || 'Fuente desconocida';
-
-                // Render markdown content
                 const summaryHtml = marked.parse(data.summary);
                 document.getElementById('summary-content').innerHTML = summaryHtml;
-
-                // Trigger MathJax rendering for LaTeX formulas
-                if (window.MathJax) {
-                    MathJax.typesetPromise([document.getElementById('summary-content')]);
-                }
-
-                // Show modal
+                if (window.MathJax) MathJax.typesetPromise([document.getElementById('summary-content')]);
                 summaryModal.show();
 
-                // Update button based on re-access status
-                if (data.is_reaccess) {
-                    // Already purchased, just show it was free
-                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Ver (GRATIS)';
-                    btn.classList.remove('btn-success');
-                    btn.classList.add('btn-info');
-                } else {
-                    // First purchase
-                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Ver (GRATIS)';
-                    btn.classList.remove('btn-success');
-                    btn.classList.add('btn-info');
-                    // Show purchase confirmation without blocking
-                    setTimeout(() => alert(data.message), 100);
-                }
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Ver';
+                btn.classList.remove('btn-topic-buy');
+                btn.classList.add('btn-topic-free');
+                if (!data.is_reaccess) showToast(data.message, 'success');
             } else {
-                alert(data.message);
+                showToast(data.message, 'warning');
                 btn.innerHTML = originalHtml;
             }
             btn.disabled = false;
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error al acceder al resumen. Por favor, intenta de nuevo.');
+            showToast('Error al acceder al resumen. Inténtalo de nuevo.', 'error');
             btn.disabled = false;
             btn.innerHTML = originalHtml;
         });

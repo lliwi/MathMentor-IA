@@ -1,215 +1,415 @@
 {% extends "base/base.html" %}
 
-{% block title %}Mi Marcador - MathMentor IA{% endblock %}
+{% block title %}Mi Marcador — MathMentor IA{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Scoreboard ── */
+.score-hero {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #06b6d4 100%);
+    border-radius: 20px;
+    padding: 2rem 2rem 0;
+    color: white;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.score-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+}
+
+.score-hero .hero-top {
+    position: relative; z-index: 1;
+    margin-bottom: 1.5rem;
+}
+
+.score-hero h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+}
+
+/* Big stats row inside hero */
+.score-hero .big-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    position: relative; z-index: 1;
+    border-top: 1px solid rgba(255,255,255,0.15);
+}
+
+.score-hero .big-stat {
+    padding: 1.25rem 1rem;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.1);
+}
+
+.score-hero .big-stat:last-child { border-right: none; }
+
+.score-hero .big-stat .bsv {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+}
+
+.score-hero .big-stat .bsv.gold {
+    background: linear-gradient(135deg, #fde68a, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.score-hero .big-stat .bsl {
+    font-size: 0.75rem;
+    opacity: 0.75;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* Two-col layout */
+.score-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Section block (replaces card) */
+.section-block {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.section-block .sb-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text-heading);
+}
+
+.section-block .sb-header .header-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+}
+
+.section-block .sb-body {
+    padding: 1.25rem 1.5rem;
+}
+
+/* Stats table */
+.stats-rows {}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.stats-row:last-child { border-bottom: none; }
+
+.stats-row .sr-label { color: var(--text-secondary); }
+.stats-row .sr-value { font-weight: 700; color: var(--text-heading); }
+
+/* Point rules */
+.point-rule {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.88rem;
+}
+
+.point-rule:last-child { border-bottom: none; }
+
+.point-rule .pr-icon {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.point-rule .pr-badge {
+    margin-left: auto;
+    font-weight: 800;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+}
+
+/* Activity table */
+.activity-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.activity-section .sb-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex; align-items: center; gap: 0.6rem;
+    font-weight: 700; font-size: 0.92rem; color: var(--text-heading);
+}
+
+.activity-section .info-bar {
+    padding: 0.75rem 1.5rem;
+    background: rgba(99,102,241,0.06);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex; align-items: center; gap: 0.4rem;
+}
+
+.activity-table {
+    width: 100%;
+    font-size: 0.875rem;
+}
+
+.activity-table th {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.activity-table td {
+    padding: 0.9rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+    color: var(--text-primary);
+}
+
+.activity-table tr:last-child td { border-bottom: none; }
+
+.activity-table tr:hover td { background: var(--bg-tertiary); }
+
+@media (max-width: 768px) {
+    .score-hero .big-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .score-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-trophy"></i> Mi Marcador</h2>
 
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <i class="bi bi-star-fill text-warning" style="font-size: 2rem;"></i>
-                <h3 class="mt-2">{{ stats.available_points }}</h3>
-                <p class="text-muted mb-0">Puntos Disponibles</p>
+<!-- Score Hero -->
+<div class="score-hero">
+    <div class="hero-top">
+        <h2><i class="bi bi-trophy-fill me-2"></i>Mi Marcador</h2>
+        <p style="opacity:0.75; font-size:0.9rem; margin:0;">Tu rendimiento y progreso en tiempo real</p>
+    </div>
+
+    <div class="big-stats">
+        <div class="big-stat">
+            <div class="bsv gold">{{ stats.available_points }}</div>
+            <div class="bsl">Puntos</div>
+        </div>
+        <div class="big-stat">
+            <div class="bsv">{{ stats.current_streak }}</div>
+            <div class="bsl">Racha actual</div>
+        </div>
+        <div class="big-stat">
+            <div class="bsv">{{ stats.best_streak }}</div>
+            <div class="bsl">Mejor racha</div>
+        </div>
+        <div class="big-stat">
+            <div class="bsv">{{ stats.accuracy_rate }}%</div>
+            <div class="bsl">Precisión</div>
+        </div>
+    </div>
+</div>
+
+<!-- Two-column info -->
+<div class="score-grid">
+    <!-- Estadísticas -->
+    <div class="section-block">
+        <div class="sb-header">
+            <span class="header-icon" style="background:rgba(99,102,241,0.12); color:#6366f1;">
+                <i class="bi bi-graph-up"></i>
+            </span>
+            Estadísticas Generales
+        </div>
+        <div class="sb-body">
+            <div class="stats-rows">
+                <div class="stats-row">
+                    <span class="sr-label">Puntos ganados</span>
+                    <span class="sr-value">{{ stats.total_points }}</span>
+                </div>
+                <div class="stats-row">
+                    <span class="sr-label">Puntos gastados</span>
+                    <span class="sr-value">{{ stats.points_spent }}</span>
+                </div>
+                <div class="stats-row">
+                    <span class="sr-label">Puntos disponibles</span>
+                    <span class="sr-value" style="color:#6366f1;">{{ stats.available_points }}</span>
+                </div>
+                <div class="stats-row">
+                    <span class="sr-label">Ejercicios completados</span>
+                    <span class="sr-value">{{ stats.total_exercises }}</span>
+                </div>
+                <div class="stats-row">
+                    <span class="sr-label">Ejercicios correctos</span>
+                    <span class="sr-value" style="color:#10b981;">{{ stats.correct_exercises }}</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <i class="bi bi-fire text-danger" style="font-size: 2rem;"></i>
-                <h3 class="mt-2">{{ stats.current_streak }}</h3>
-                <p class="text-muted mb-0">Racha Actual</p>
-            </div>
+    <!-- Sistema de puntos -->
+    <div class="section-block">
+        <div class="sb-header">
+            <span class="header-icon" style="background:rgba(16,185,129,0.12); color:#10b981;">
+                <i class="bi bi-info-circle"></i>
+            </span>
+            Sistema de Puntuación
         </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <i class="bi bi-trophy-fill text-success" style="font-size: 2rem;"></i>
-                <h3 class="mt-2">{{ stats.best_streak }}</h3>
-                <p class="text-muted mb-0">Mejor Racha</p>
+        <div class="sb-body">
+            <div class="point-rule">
+                <span class="pr-icon" style="background:rgba(16,185,129,0.1); color:#10b981;"><i class="bi bi-check-circle-fill"></i></span>
+                <span>Respuesta correcta</span>
+                <span class="pr-badge" style="background:rgba(16,185,129,0.12); color:#10b981;">+10 pts</span>
             </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <i class="bi bi-bullseye text-primary" style="font-size: 2rem;"></i>
-                <h3 class="mt-2">{{ stats.accuracy_rate }}%</h3>
-                <p class="text-muted mb-0">Precisión</p>
+            <div class="point-rule">
+                <span class="pr-icon" style="background:rgba(6,182,212,0.1); color:#06b6d4;"><i class="bi bi-check-circle"></i></span>
+                <span>Metodología correcta</span>
+                <span class="pr-badge" style="background:rgba(6,182,212,0.12); color:#06b6d4;">+5 pts</span>
+            </div>
+            <div class="point-rule">
+                <span class="pr-icon" style="background:rgba(245,158,11,0.1); color:#f59e0b;"><i class="bi bi-arrow-repeat"></i></span>
+                <span>Reintento exitoso</span>
+                <span class="pr-badge" style="background:rgba(245,158,11,0.12); color:#f59e0b;">+3 pts</span>
+            </div>
+            <div class="point-rule">
+                <span class="pr-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;"><i class="bi bi-fire"></i></span>
+                <span>Bonus rachas (3, 5, 10, 15+)</span>
+                <span class="pr-badge" style="background:rgba(239,68,68,0.12); color:#ef4444;">+bonus</span>
+            </div>
+            <div class="point-rule">
+                <span class="pr-icon" style="background:rgba(107,114,128,0.1); color:#6b7280;"><i class="bi bi-lightbulb"></i></span>
+                <span>Comprar pista</span>
+                <span class="pr-badge" style="background:rgba(107,114,128,0.1); color:#6b7280;">−5 pts</span>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Estadísticas Generales</h5>
-            </div>
-            <div class="card-body">
-                <table class="table table-sm">
-                    <tr>
-                        <td><strong>Total de Puntos Ganados:</strong></td>
-                        <td class="text-end">{{ stats.total_points }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Puntos Gastados:</strong></td>
-                        <td class="text-end">{{ stats.points_spent }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Puntos Disponibles:</strong></td>
-                        <td class="text-end"><strong>{{ stats.available_points }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Ejercicios Completados:</strong></td>
-                        <td class="text-end">{{ stats.total_exercises }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Ejercicios Correctos:</strong></td>
-                        <td class="text-end">{{ stats.correct_exercises }}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Sistema de Puntuación</h5>
-            </div>
-            <div class="card-body">
-                <ul class="list-unstyled">
-                    <li class="mb-2">
-                        <i class="bi bi-check-circle-fill text-success"></i>
-                        <strong>+10 puntos:</strong> Respuesta correcta
-                    </li>
-                    <li class="mb-2">
-                        <i class="bi bi-check-circle text-info"></i>
-                        <strong>+5 puntos:</strong> Metodología correcta
-                    </li>
-                    <li class="mb-2">
-                        <i class="bi bi-arrow-repeat text-warning"></i>
-                        <strong>+3 puntos:</strong> Reintento exitoso
-                    </li>
-                    <li class="mb-2">
-                        <i class="bi bi-fire text-danger"></i>
-                        <strong>Bonus:</strong> Rachas de 3, 5, 10, 15+
-                    </li>
-                    <li>
-                        <i class="bi bi-lightbulb text-warning"></i>
-                        <strong>-5 puntos:</strong> Comprar pista
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
-
+<!-- Activity history -->
 {% if activities %}
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial Reciente</h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info mb-3">
-                    <small><i class="bi bi-info-circle"></i> <strong>Historial completo:</strong> Ejercicios resueltos, compras de resúmenes (-15 pts) y compras de pistas (-5 pts).</small>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Actividad</th>
-                                <th>Tipo</th>
-                                <th>Desglose de Puntos</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for activity in activities %}
-                            <tr>
-                                <td>{{ activity.date.strftime('%d/%m/%Y %H:%M') }}</td>
+<div class="activity-section">
+    <div class="sb-header">
+        <span class="header-icon" style="background:rgba(99,102,241,0.12); color:#6366f1; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.9rem; flex-shrink:0;">
+            <i class="bi bi-clock-history"></i>
+        </span>
+        Historial Reciente
+    </div>
+    <div class="info-bar">
+        <i class="bi bi-info-circle"></i>
+        Historial completo: ejercicios resueltos, compras de resúmenes y pistas.
+    </div>
+    <div class="table-responsive">
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Actividad</th>
+                    <th>Tipo</th>
+                    <th>Desglose</th>
+                    <th style="text-align:right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in activities %}
+                <tr>
+                    <td style="color:var(--text-secondary); white-space:nowrap;">{{ activity.date.strftime('%d/%m/%Y %H:%M') }}</td>
 
-                                {% if activity.type == 'submission' %}
-                                    {% set submission = activity.data %}
-                                    <td>{{ submission.exercise.topic.topic_name[:50] }}...</td>
-                                    <td>
-                                        <span class="badge bg-primary"><i class="bi bi-pencil-square"></i> Ejercicio</span>
-                                        {% if submission.is_correct_result %}
-                                            <span class="badge bg-success">Correcto</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Incorrecto</span>
-                                        {% endif %}
-                                        {% if submission.is_correct_methodology %}
-                                            <span class="badge bg-info">Metodología ✓</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <small>
-                                            {% if submission.score_result > 0 %}
-                                            <span class="text-success">Resultado: +{{ submission.score_result }}</span><br>
-                                            {% endif %}
-                                            {% if submission.score_development > 0 %}
-                                            <span class="text-info">Metodología: +{{ submission.score_development }}</span><br>
-                                            {% endif %}
-                                            {% if submission.score_effort > 0 %}
-                                            <span class="text-warning">Esfuerzo: +{{ submission.score_effort }}</span><br>
-                                            {% endif %}
-                                            {% if submission.streak_bonus > 0 %}
-                                            <span class="text-danger">Bonus racha: +{{ submission.streak_bonus }}</span>
-                                            {% endif %}
-                                        </small>
-                                    </td>
-                                    <td><strong class="text-success">+{{ submission.total_score + (submission.streak_bonus if submission.streak_bonus else 0) }}</strong></td>
+                    {% if activity.type == 'submission' %}
+                        {% set submission = activity.data %}
+                        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            {{ submission.exercise.topic.topic_name[:50] }}...
+                        </td>
+                        <td>
+                            <span class="badge" style="background:rgba(99,102,241,0.12); color:#6366f1; border:none;">
+                                <i class="bi bi-pencil-square me-1"></i>Ejercicio
+                            </span>
+                            {% if submission.is_correct_result %}
+                                <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; border:none;">Correcto</span>
+                            {% else %}
+                                <span class="badge" style="background:rgba(239,68,68,0.12); color:#ef4444; border:none;">Incorrecto</span>
+                            {% endif %}
+                            {% if submission.is_correct_methodology %}
+                                <span class="badge" style="background:rgba(6,182,212,0.12); color:#06b6d4; border:none;">Metodología ✓</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="font-size:0.82rem; line-height:1.6;">
+                                {% if submission.score_result > 0 %}<span style="color:#10b981;">+{{ submission.score_result }} resultado</span><br>{% endif %}
+                                {% if submission.score_development > 0 %}<span style="color:#06b6d4;">+{{ submission.score_development }} metodología</span><br>{% endif %}
+                                {% if submission.score_effort > 0 %}<span style="color:#f59e0b;">+{{ submission.score_effort }} esfuerzo</span><br>{% endif %}
+                                {% if submission.streak_bonus > 0 %}<span style="color:#ef4444;">+{{ submission.streak_bonus }} racha</span>{% endif %}
+                            </div>
+                        </td>
+                        <td style="text-align:right; font-weight:800; color:#10b981;">
+                            +{{ submission.total_score + (submission.streak_bonus if submission.streak_bonus else 0) }}
+                        </td>
 
-                                {% elif activity.type == 'purchase_summary' %}
-                                    {% set purchase = activity.data %}
-                                    <td>{{ purchase.topic_name[:50] }}...</td>
-                                    <td>
-                                        <span class="badge bg-warning"><i class="bi bi-book"></i> Compra Resumen</span>
-                                        {% if purchase.access_count > 1 %}
-                                            <span class="badge bg-secondary">Accedido {{ purchase.access_count }}x</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <small>
-                                            <span class="text-danger">Costo: -{{ purchase.points_paid }} puntos</span>
-                                        </small>
-                                    </td>
-                                    <td><strong class="text-danger">-{{ purchase.points_paid }}</strong></td>
+                    {% elif activity.type == 'purchase_summary' %}
+                        {% set purchase = activity.data %}
+                        <td>{{ purchase.topic_name[:50] }}...</td>
+                        <td>
+                            <span class="badge" style="background:rgba(245,158,11,0.12); color:#f59e0b; border:none;">
+                                <i class="bi bi-book me-1"></i>Resumen
+                            </span>
+                        </td>
+                        <td style="font-size:0.82rem; color:#ef4444;">−{{ purchase.points_paid }} pts</td>
+                        <td style="text-align:right; font-weight:800; color:#ef4444;">−{{ purchase.points_paid }}</td>
 
-                                {% elif activity.type == 'purchase_hint' %}
-                                    {% set purchase = activity.data %}
-                                    <td>{{ purchase.topic_name[:50] }}...</td>
-                                    <td>
-                                        <span class="badge bg-secondary"><i class="bi bi-lightbulb"></i> Compra Pista {{ purchase.hint_level }}</span>
-                                        <span class="badge bg-light text-dark">{{ 'Texto' if purchase.hint_type == 'text' else 'Visual' }}</span>
-                                    </td>
-                                    <td>
-                                        <small>
-                                            <span class="text-danger">Costo: -{{ purchase.points_paid }} puntos</span>
-                                        </small>
-                                    </td>
-                                    <td><strong class="text-danger">-{{ purchase.points_paid }}</strong></td>
-                                {% endif %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                    {% elif activity.type == 'purchase_hint' %}
+                        {% set purchase = activity.data %}
+                        <td>{{ purchase.topic_name[:50] }}...</td>
+                        <td>
+                            <span class="badge" style="background:rgba(107,114,128,0.1); color:#6b7280; border:none;">
+                                <i class="bi bi-lightbulb me-1"></i>Pista {{ purchase.hint_level }}
+                            </span>
+                        </td>
+                        <td style="font-size:0.82rem; color:#ef4444;">−{{ purchase.points_paid }} pts</td>
+                        <td style="text-align:right; font-weight:800; color:#ef4444;">−{{ purchase.points_paid }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endif %}
+
 {% endblock %}

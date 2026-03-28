@@ -1,86 +1,401 @@
 {% extends "base/base.html" %}
 
-{% block title %}Mis Resúmenes - MathMentor IA{% endblock %}
+{% block title %}Mis Resúmenes — MathMentor IA{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── My Summaries ── */
+.summaries-hero {
+    background: linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #6366f1 100%);
+    border-radius: 20px;
+    padding: 2rem 2rem 1.5rem;
+    color: white;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.summaries-hero::before {
+    content: '';
+    position: absolute;
+    top: -50px; right: -50px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+}
+
+.summaries-hero h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+    position: relative; z-index: 1;
+}
+
+.summaries-hero p {
+    opacity: 0.8;
+    font-size: 0.9rem;
+    margin: 0;
+    position: relative; z-index: 1;
+}
+
+/* Summaries grid */
+.summaries-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+/* Summary card */
+.summary-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px var(--card-hover-shadow);
+}
+
+.summary-card .sc-top {
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+}
+
+.summary-card .sc-icon {
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,182,212,0.15));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    color: #10b981;
+    flex-shrink: 0;
+}
+
+.summary-card .sc-topic {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    line-height: 1.35;
+}
+
+.summary-card .sc-meta {
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.sc-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.83rem;
+}
+
+.sc-meta-row .sc-meta-label {
+    color: var(--text-secondary);
+}
+
+.sc-meta-row .sc-meta-val {
+    font-weight: 700;
+    color: var(--text-heading);
+    font-size: 0.85rem;
+}
+
+.sc-meta-row .sc-badge {
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+}
+
+.summary-card .sc-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-view-summary {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    color: white;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-view-summary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* Empty state */
+.empty-state {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 3.5rem 2rem;
+    text-align: center;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.empty-state .es-icon {
+    width: 72px; height: 72px;
+    border-radius: 20px;
+    background: rgba(99,102,241,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    color: #6366f1;
+    margin: 0 auto 1.5rem;
+}
+
+.empty-state h3 {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-heading);
+    margin-bottom: 0.6rem;
+}
+
+.empty-state p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.empty-state .es-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-es {
+    padding: 0.65rem 1.25rem;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s;
+    border: none;
+}
+
+.btn-es.primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+}
+
+.btn-es.secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-es:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Summary Modal */
+.modal-header-gradient {
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    color: white;
+    border-bottom: none;
+    padding: 1.25rem 1.5rem;
+}
+
+.modal-header-gradient .btn-close {
+    filter: brightness(10);
+    opacity: 0.8;
+}
+
+.modal-header-gradient .btn-close:hover { opacity: 1; }
+
+.summary-modal-free-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.35rem 0.75rem;
+    border-radius: 100px;
+    background: rgba(16,185,129,0.12);
+    color: #10b981;
+    margin-bottom: 1.25rem;
+}
+
+/* Markdown content */
+.markdown-content {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.markdown-content h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: #10b981;
+}
+
+.markdown-content h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 1.25rem;
+    margin-bottom: 0.6rem;
+    color: #06b6d4;
+}
+
+.markdown-content h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-heading);
+}
+
+.markdown-content code {
+    background: var(--bg-tertiary);
+    padding: 0.15em 0.45em;
+    border-radius: 5px;
+    font-size: 0.88em;
+    color: #6366f1;
+}
+
+.markdown-content pre {
+    background: var(--bg-tertiary);
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+}
+
+.markdown-content ul,
+.markdown-content ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.markdown-content li { margin-bottom: 0.4rem; }
+
+@media (max-width: 576px) {
+    .summaries-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1 class="mb-4">
-        <i class="bi bi-book-fill"></i> Mis Resúmenes
-    </h1>
 
-    {% if summaries_data %}
-    <p class="lead">Aquí tienes todos los resúmenes que has comprado. Puedes acceder a ellos tantas veces como quieras, ¡GRATIS!</p>
+<!-- Hero -->
+<div class="summaries-hero">
+    <div style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; opacity:0.65; margin-bottom:0.4rem; position:relative; z-index:1;">
+        Biblioteca Personal
+    </div>
+    <h1><i class="bi bi-book-fill me-2"></i>Mis Resúmenes</h1>
+    <p>Accede a todos los resúmenes que has desbloqueado — ¡siempre gratis!</p>
+</div>
 
-    <div class="row">
-        {% for data in summaries_data %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-book"></i> {{ data.topic.topic_name if data.topic else 'N/A' }}
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-6">Primera compra:</dt>
-                        <dd class="col-sm-6">{{ data.usage.first_accessed_at.strftime('%d/%m/%Y') }}</dd>
+{% if summaries_data %}
 
-                        <dt class="col-sm-6">Último acceso:</dt>
-                        <dd class="col-sm-6">{{ data.usage.last_accessed_at.strftime('%d/%m/%Y') }}</dd>
-
-                        <dt class="col-sm-6">Total accesos:</dt>
-                        <dd class="col-sm-6"><span class="badge bg-primary">{{ data.usage.access_count }}</span></dd>
-
-                        <dt class="col-sm-6">Puntos pagados:</dt>
-                        <dd class="col-sm-6"><span class="badge bg-warning">{{ data.usage.points_paid }}</span></dd>
-                    </dl>
-                </div>
-                <div class="card-footer">
-                    <button class="btn btn-primary w-100 view-summary-btn"
-                            data-summary-id="{{ data.summary.id }}"
-                            data-topic-name="{{ data.topic.topic_name if data.topic else 'Resumen' }}">
-                        <i class="bi bi-eye"></i> Ver Resumen (GRATIS)
-                    </button>
-                </div>
+<div class="summaries-grid">
+    {% for data in summaries_data %}
+    <div class="summary-card">
+        <div class="sc-top">
+            <div class="sc-icon"><i class="bi bi-journal-text"></i></div>
+            <div class="sc-topic">{{ data.topic.topic_name if data.topic else 'N/A' }}</div>
+        </div>
+        <div class="sc-meta">
+            <div class="sc-meta-row">
+                <span class="sc-meta-label">Primera compra</span>
+                <span class="sc-meta-val">{{ data.usage.first_accessed_at.strftime('%d/%m/%Y') }}</span>
+            </div>
+            <div class="sc-meta-row">
+                <span class="sc-meta-label">Último acceso</span>
+                <span class="sc-meta-val">{{ data.usage.last_accessed_at.strftime('%d/%m/%Y') }}</span>
+            </div>
+            <div class="sc-meta-row">
+                <span class="sc-meta-label">Veces consultado</span>
+                <span class="sc-badge" style="background:rgba(99,102,241,0.12); color:#6366f1;">{{ data.usage.access_count }}x</span>
+            </div>
+            <div class="sc-meta-row">
+                <span class="sc-meta-label">Puntos pagados</span>
+                <span class="sc-badge" style="background:rgba(245,158,11,0.12); color:#f59e0b;">{{ data.usage.points_paid }} pts</span>
             </div>
         </div>
-        {% endfor %}
+        <div class="sc-footer">
+            <button class="btn-view-summary view-summary-btn"
+                    data-summary-id="{{ data.summary.id }}"
+                    data-topic-name="{{ data.topic.topic_name if data.topic else 'Resumen' }}">
+                <i class="bi bi-eye"></i> Ver Resumen
+            </button>
+        </div>
     </div>
-    {% else %}
-    <div class="alert alert-info" role="alert">
-        <h4 class="alert-heading"><i class="bi bi-info-circle"></i> No has comprado ningún resumen todavía</h4>
-        <p>Los resúmenes de temas te ayudan a estudiar antes de practicar. Puedes comprarlos desde la página de práctica por <strong>15 puntos</strong>.</p>
-        <hr>
-        <p class="mb-0">
-            <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary">
-                <i class="bi bi-arrow-left"></i> Volver al Dashboard
-            </a>
-            <a href="{{ url_for('student.practice') }}" class="btn btn-success">
-                <i class="bi bi-play-circle"></i> Ir a Practicar
-            </a>
-        </p>
-    </div>
-    {% endif %}
+    {% endfor %}
 </div>
+
+{% else %}
+
+<div class="empty-state">
+    <div class="es-icon"><i class="bi bi-book"></i></div>
+    <h3>Aún no tienes resúmenes</h3>
+    <p>Los resúmenes te ayudan a estudiar los temas antes de practicar. Desbloquéalos desde la página de práctica usando tus puntos.</p>
+    <div class="es-actions">
+        <a href="{{ url_for('student.practice') }}" class="btn-es primary">
+            <i class="bi bi-lightning-charge-fill"></i> Ir a Practicar
+        </a>
+        <a href="{{ url_for('student.dashboard') }}" class="btn-es secondary">
+            <i class="bi bi-house"></i> Inicio
+        </a>
+    </div>
+</div>
+
+{% endif %}
 
 <!-- Summary Modal -->
 <div class="modal fade" id="summaryModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-book-fill"></i> <span id="summary-topic-name"></span>
+        <div class="modal-content" style="border-radius:18px; overflow:hidden; border: 1px solid var(--border-color);">
+            <div class="modal-header modal-header-gradient">
+                <h5 class="modal-title" style="font-weight:700; font-size:1rem;">
+                    <i class="bi bi-book-fill me-2"></i><span id="summary-topic-name"></span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="alert alert-success">
-                    <i class="bi bi-info-circle"></i> Acceso gratuito - Ya compraste este resumen
+            <div class="modal-body" style="background: var(--bg-primary);">
+                <div class="summary-modal-free-badge">
+                    <i class="bi bi-check-circle-fill"></i> Acceso gratuito — ya compraste este resumen
                 </div>
                 <div id="summary-content" class="markdown-content"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color); background: var(--bg-secondary);">
+                <button type="button" class="btn-es secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Cerrar
+                </button>
             </div>
         </div>
     </div>
@@ -110,72 +425,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Set topic name
             document.getElementById('summary-topic-name').textContent = topicName;
 
-            // Render markdown content
             const summaryHtml = marked.parse(content);
             document.getElementById('summary-content').innerHTML = summaryHtml;
 
-            // Render any LaTeX formulas if MathJax is available
             if (typeof MathJax !== 'undefined') {
                 MathJax.typesetPromise([document.getElementById('summary-content')])
                     .catch((err) => console.log('MathJax error:', err));
             }
 
-            // Show modal
             summaryModal.show();
         });
     });
 });
 </script>
 
-<style>
-.markdown-content {
-    font-size: 1.1rem;
-    line-height: 1.6;
-}
-
-.markdown-content h1 {
-    font-size: 2rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-    color: #28a745;
-}
-
-.markdown-content h2 {
-    font-size: 1.5rem;
-    margin-top: 1.25rem;
-    margin-bottom: 0.75rem;
-    color: #17a2b8;
-}
-
-.markdown-content h3 {
-    font-size: 1.25rem;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.markdown-content code {
-    background-color: #f8f9fa;
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 90%;
-}
-
-.markdown-content pre {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 5px;
-    overflow-x: auto;
-}
-
-.markdown-content ul, .markdown-content ol {
-    margin-left: 1.5rem;
-}
-
-.markdown-content li {
-    margin-bottom: 0.5rem;
-}
-</style>
 {% endblock %}

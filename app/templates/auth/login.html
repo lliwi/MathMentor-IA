@@ -1,35 +1,472 @@
 {% extends "base/base.html" %}
 
-{% block title %}Iniciar Sesión - MathMentor IA{% endblock %}
+{% block title %}Iniciar Sesión — MathMentor IA{% endblock %}
+
+{% block main_class %}p-0{% endblock %}
+{% block flash_messages %}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Login full-page layout */
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+    margin: 0;
+    padding: 0;
+}
+
+/* Left panel - decorativo */
+.login-panel-left {
+    display: none;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #06b6d4 100%);
+    position: relative;
+    overflow: hidden;
+    flex: 1;
+}
+
+@media (min-width: 992px) {
+    .login-panel-left {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 3rem;
+    }
+}
+
+.login-panel-left::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(6,182,212,0.2) 0%, transparent 40%),
+        radial-gradient(circle at 50% 10%, rgba(245,158,11,0.1) 0%, transparent 30%);
+}
+
+.login-panel-left .panel-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: white;
+    max-width: 360px;
+}
+
+.login-panel-left .panel-logo {
+    width: 80px;
+    height: 80px;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    color: white;
+    margin: 0 auto 2rem;
+    backdrop-filter: blur(10px);
+}
+
+.login-panel-left h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+}
+
+.login-panel-left h2 .highlight {
+    background: linear-gradient(135deg, #fde68a, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.login-panel-left p {
+    opacity: 0.8;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+}
+
+.login-feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+}
+
+.login-feature-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    font-size: 0.92rem;
+    opacity: 0.9;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.login-feature-list li:last-child {
+    border-bottom: none;
+}
+
+.login-feature-list .feat-icon {
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* Floating shapes */
+.login-panel-left .shape {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.06;
+    background: white;
+}
+
+.login-panel-left .shape-1 {
+    width: 300px; height: 300px;
+    top: -80px; left: -80px;
+}
+
+.login-panel-left .shape-2 {
+    width: 200px; height: 200px;
+    bottom: -50px; right: -50px;
+}
+
+.login-panel-left .shape-3 {
+    width: 120px; height: 120px;
+    top: 40%; left: 60%;
+}
+
+/* Right panel - formulario */
+.login-panel-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    background-color: var(--bg-primary);
+    transition: background-color 0.3s ease;
+    flex: 1;
+    max-width: 100%;
+}
+
+@media (min-width: 992px) {
+    .login-panel-right {
+        max-width: 500px;
+        padding: 3rem;
+    }
+}
+
+.login-form-wrapper {
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.login-header .login-mobile-logo {
+    display: none;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #6366f1, #06b6d4);
+    border-radius: 16px;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    color: white;
+    margin: 0 auto 1.25rem;
+}
+
+@media (max-width: 991.98px) {
+    .login-header .login-mobile-logo {
+        display: flex;
+    }
+}
+
+.login-header h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-heading);
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.02em;
+}
+
+.login-header p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 0;
+}
+
+/* Input groups */
+.login-input-group {
+    position: relative;
+    margin-bottom: 1.25rem;
+}
+
+.login-input-group label {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+    display: block;
+}
+
+.login-input-group .input-wrapper {
+    position: relative;
+}
+
+.login-input-group .input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 1rem;
+    pointer-events: none;
+    transition: color 0.2s ease;
+}
+
+.login-input-group .form-control {
+    padding-left: 2.75rem;
+    height: 50px;
+    font-size: 0.95rem;
+    border-radius: 12px;
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.login-input-group .form-control:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    background-color: var(--bg-secondary);
+}
+
+.login-input-group .form-control:focus + .input-icon,
+.login-input-group .input-wrapper:focus-within .input-icon {
+    color: #6366f1;
+}
+
+/* Login button */
+.btn-login {
+    width: 100%;
+    height: 50px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+    border: none;
+    color: white;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.btn-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.45);
+    color: white;
+}
+
+.btn-login:active {
+    transform: translateY(0);
+}
+
+/* Theme toggle en login */
+.login-theme-toggle {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 1000;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    padding: 0.4rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 12px var(--shadow);
+}
+
+.login-theme-toggle .theme-icon {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.login-theme-toggle .theme-slider {
+    background-color: #e5e7eb;
+}
+
+body.dark-mode .login-theme-toggle .theme-slider {
+    background-color: rgba(99,102,241,0.4);
+}
+
+body.dark-mode .login-theme-toggle input:checked + .theme-slider {
+    background-color: #6366f1;
+}
+
+/* Back to home link */
+.login-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    margin-bottom: 2rem;
+    transition: color 0.2s ease;
+}
+
+.login-back-link:hover {
+    color: #6366f1;
+}
+
+/* Override container for login page */
+body:not(.has-auth-user) main.container {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-6 col-lg-4">
-        <div class="card shadow">
-            <div class="card-body">
-                <div class="text-center mb-4">
-                    <i class="bi bi-calculator text-primary" style="font-size: 3rem;"></i>
-                    <h2 class="mt-2">MathMentor IA</h2>
-                    <p class="text-muted">Tu tutor personal de matemáticas</p>
+<!-- Theme Toggle fixed -->
+<div class="login-theme-toggle">
+    <i class="bi bi-sun-fill theme-icon"></i>
+    <label class="theme-switch" style="width:38px; height:20px;">
+        <input type="checkbox" id="theme-toggle-login">
+        <span class="theme-slider" style="border-radius:20px;"></span>
+    </label>
+    <i class="bi bi-moon-stars-fill theme-icon"></i>
+</div>
+
+<div class="login-page">
+    <!-- Panel izquierdo decorativo -->
+    <div class="login-panel-left">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+
+        <div class="panel-content">
+            <div class="panel-logo">
+                <i class="bi bi-calculator-fill"></i>
+            </div>
+            <h2>Di adiós a los <span class="highlight">ceros</span></h2>
+            <p>Tu tutor de matemáticas con IA, disponible 24/7. Aprende a tu ritmo y sube tu nota.</p>
+
+            <ul class="login-feature-list">
+                <li>
+                    <span class="feat-icon"><i class="bi bi-lightning-charge-fill"></i></span>
+                    Ejercicios personalizados con IA
+                </li>
+                <li>
+                    <span class="feat-icon"><i class="bi bi-trophy-fill"></i></span>
+                    Sistema de puntos y rachas
+                </li>
+                <li>
+                    <span class="feat-icon"><i class="bi bi-book-fill"></i></span>
+                    Resúmenes de tu libro de texto
+                </li>
+                <li>
+                    <span class="feat-icon"><i class="bi bi-chat-dots-fill"></i></span>
+                    Feedback inteligente al instante
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Panel derecho - formulario -->
+    <div class="login-panel-right">
+        <div class="login-form-wrapper">
+            <a href="{{ url_for('index') }}" class="login-back-link">
+                <i class="bi bi-arrow-left"></i> Volver al inicio
+            </a>
+
+            <div class="login-header">
+                <div class="login-mobile-logo">
+                    <i class="bi bi-calculator-fill"></i>
+                </div>
+                <h1>Bienvenido de nuevo</h1>
+                <p>Inicia sesión para continuar tu aprendizaje</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mb-4" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                <div class="login-input-group">
+                    <label for="username">Usuario</label>
+                    <div class="input-wrapper">
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Tu nombre de usuario" required autofocus autocomplete="username">
+                        <i class="bi bi-person-fill input-icon"></i>
+                    </div>
                 </div>
 
-                <form method="POST" action="{{ url_for('auth.login') }}">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Usuario</label>
-                        <input type="text" class="form-control" id="username" name="username" required autofocus>
+                <div class="login-input-group">
+                    <label for="password">Contraseña</label>
+                    <div class="input-wrapper">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Tu contraseña" required autocomplete="current-password">
+                        <i class="bi bi-lock-fill input-icon"></i>
                     </div>
+                </div>
 
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Contraseña</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
-                    </button>
-                </form>
-            </div>
+                <button type="submit" class="btn btn-login">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Iniciar Sesión
+                </button>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+// Override theme toggle for login page
+(function() {
+    const loginToggle = document.getElementById('theme-toggle-login');
+    if (!loginToggle) return;
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    if (currentTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        loginToggle.checked = true;
+    }
+    loginToggle.addEventListener('change', function() {
+        if (this.checked) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light');
+        }
+    });
+})();
+</script>
 {% endblock %}

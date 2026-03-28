@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/llibert/Documents/development/flask/**)",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__take_screenshot",
+      "Bash(docker-compose -f \"/home/llibert/Documents/development/flask/MathMentor IA/docker-compose.yml\" exec web head -10 /app/app/templates/auth/login.html)",
+      "Bash(docker-compose -f \"/home/llibert/Documents/development/flask/MathMentor IA/docker-compose.yml\" exec web grep -n \"flash_messages\\\\|main_class\\\\|block content\" /app/app/templates/base/base.html)",
+      "Bash(docker-compose -f \"/home/llibert/Documents/development/flask/MathMentor IA/docker-compose.yml\" logs --tail=20 web)",
+      "mcp__chrome-devtools__evaluate_script",
+      "Bash(docker-compose -f '/home/llibert/Documents/development/flask/MathMentor IA/docker-compose.yml' exec web grep -n \"render_template\\\\|login\" /app/app/auth/routes.py)",
+      "Bash(docker-compose -f \"/home/llibert/Documents/development/flask/MathMentor IA/docker-compose.yml\" restart web)",
+      "Bash(docker-compose -f \"/home/llibert/Documents/development/flask/MathMentor IA/docker-compose.yml\" logs --tail=5 web)",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__click"
+    ]
+  }
+}
