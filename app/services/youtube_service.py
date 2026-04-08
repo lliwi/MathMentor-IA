@@ -3,6 +3,7 @@ YouTube Service for extracting and processing video transcripts
 """
 import re
 import os
+import json
 import tempfile
 from typing import List, Dict, Optional
 from datetime import datetime
@@ -117,24 +118,57 @@ class YouTubeService:
             # Extract metadata for each video - OPTIMIZED to skip unavailable videos fast
             from concurrent.futures import ThreadPoolExecutor, as_completed
 
+            error_samples = []
+
             def get_video_info(yt):
+                # Always try to get at least the video_id so the item is usable
                 try:
                     video_id = yt.video_id
-                    video_url = f'https://www.youtube.com/watch?v={video_id}'
-
-                    # Try to get basic info - if video is unavailable, this will fail fast
-                    title = yt.title  # This triggers metadata fetch
-
-                    return {
-                        'video_id': video_id,
-                        'title': title,
-                        'url': video_url,
-                        'duration': getattr(yt, 'length', 0),
-                        'published_at': getattr(yt, 'publish_date', None),
-                    }
                 except Exception as e:
-                    # Skip unavailable videos silently
+                    if len(error_samples) < 3:
+                        error_samples.append(f"video_id failed: {type(e).__name__}: {e}")
                     return None
+
+                video_url = f'https://www.youtube.com/watch?v={video_id}'
+                title = None
+                duration = 0
+                published_at = None
+
+                try:
+                    title = yt.title
+                except Exception as e:
+                    if len(error_samples) < 3:
+                        error_samples.append(f"title failed for {video_id}: {type(e).__name__}: {e}")
+                    # Fallback: YouTube oEmbed public endpoint (no auth, no bot detection)
+                    try:
+                        import requests
+                        r = requests.get(
+                            'https://www.youtube.com/oembed',
+                            params={'url': video_url, 'format': 'json'},
+                            timeout=5,
+                        )
+                        if r.status_code == 200:
+                            title = r.json().get('title')
+                    except Exception:
+                        pass
+
+                try:
+                    duration = getattr(yt, 'length', 0) or 0
+                except Exception:
+                    pass
+
+                try:
+                    published_at = getattr(yt, 'publish_date', None)
+                except Exception:
+                    pass
+
+                return {
+                    'video_id': video_id,
+                    'title': title or f'Video {video_id}',
+                    'url': video_url,
+                    'duration': duration,
+                    'published_at': published_at,
+                }
 
             # Process videos in parallel for speed (max 10 threads)
             with ThreadPoolExecutor(max_workers=10) as executor:
@@ -146,6 +180,10 @@ class YouTubeService:
                         videos.append(result)
 
             print(f"[YouTubeService] Cargados {len(videos)} videos válidos de {len(video_objects)} totales")
+            if error_samples:
+                print(f"[YouTubeService] Errores de metadatos (primeros {len(error_samples)}):")
+                for err in error_samples:
+                    print(f"  - {err}")
             return videos
 
         except Exception as e:
@@ -275,6 +313,67 @@ class YouTubeService:
                     pass
 
     @staticmethod
+    def _extract_transcript_with_ytdlp(video_id: str, languages=('es', 'es-ES', 'en', 'en-US')) -> Optional[List[Dict]]:
+        """
+        Extract subtitles using yt-dlp (more robust against bot-detection).
+        Returns list of segments with 'text', 'start', 'duration' or None.
+        """
+        try:
+            import yt_dlp
+            import tempfile
+            import glob
+
+            url = f'https://www.youtube.com/watch?v={video_id}'
+            with tempfile.TemporaryDirectory() as tmpdir:
+                outtmpl = os.path.join(tmpdir, '%(id)s.%(ext)s')
+                ydl_opts = {
+                    'skip_download': True,
+                    'writesubtitles': True,
+                    'writeautomaticsub': True,
+                    'subtitleslangs': list(languages),
+                    'subtitlesformat': 'json3',
+                    'quiet': True,
+                    'no_warnings': True,
+                    'outtmpl': outtmpl,
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+
+                # Look for any downloaded .json3 subtitle file
+                sub_files = sorted(glob.glob(os.path.join(tmpdir, f'{video_id}*.json3')))
+                if not sub_files:
+                    return None
+
+                # Prefer manual subs over auto; prefer preferred language order
+                def score(path):
+                    name = os.path.basename(path)
+                    for i, lang in enumerate(languages):
+                        if f'.{lang}.' in name:
+                            return i
+                    return len(languages)
+                sub_files.sort(key=score)
+
+                with open(sub_files[0], 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+
+                segments = []
+                for event in data.get('events', []):
+                    if 'segs' not in event:
+                        continue
+                    text = ''.join(seg.get('utf8', '') for seg in event['segs']).strip()
+                    if not text:
+                        continue
+                    segments.append({
+                        'text': text,
+                        'start': (event.get('tStartMs', 0) or 0) / 1000.0,
+                        'duration': (event.get('dDurationMs', 0) or 0) / 1000.0,
+                    })
+                return segments if segments else None
+        except Exception as e:
+            print(f"[YouTubeService] yt-dlp subtitles failed for {video_id}: {type(e).__name__}: {e}")
+            return None
+
+    @staticmethod
     def extract_video_transcript(video_id: str, language: str = 'es', generate_if_missing: bool = True) -> Optional[List[Dict]]:
         """
         Extract transcript from a YouTube video. If not available, generate with Whisper.
@@ -288,9 +387,14 @@ class YouTubeService:
             List of dicts with 'text', 'start', 'duration' keys, or None if not available
         """
         try:
-            # Try direct approach first - simpler and more reliable
+            # 1. Try yt-dlp first - most robust against bot detection
+            result = YouTubeService._extract_transcript_with_ytdlp(video_id)
+            if result:
+                print(f"[YouTubeService] Transcripción obtenida vía yt-dlp para {video_id} ({len(result)} segmentos)")
+                return result
+
+            # 2. Try youtube-transcript-api direct approach
             try:
-                # Try to get transcript in Spanish or English
                 return YouTubeTranscriptApi.get_transcript(video_id, languages=['es', 'en', 'es-ES', 'en-US'])
             except:
                 pass

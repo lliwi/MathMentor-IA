@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
+# Install CPU-only torch first from the dedicated PyTorch index to avoid
+# pulling ~3GB of CUDA libraries from the default PyPI wheels.
+RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code

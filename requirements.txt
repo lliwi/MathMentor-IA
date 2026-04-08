@@ -26,13 +26,15 @@ pdfplumber==0.11.0
 # YouTube Processing
 youtube-transcript-api==0.6.2
 pytubefix==10.3.5
+yt-dlp==2024.12.13
 
 # AI and ML
 openai==1.54.0
 groq==0.11.0
 sentence-transformers==2.3.1
 transformers==4.36.2
-torch==2.1.2
+# torch is installed separately in the Dockerfile from the CPU-only index
+# to avoid pulling ~3GB of CUDA libraries
 numpy<2.0.0
 tiktoken==0.5.2
 

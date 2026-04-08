@@ -113,12 +113,39 @@
                         </p>
 
                         {% if channel.processed %}
-                        <p class="mb-0">
+                        <p class="mb-2">
                             <small class="text-muted">
                                 <i class="bi bi-camera-video"></i> {{ channel.video_count }} videos |
                                 <i class="bi bi-list-task"></i> {{ channel.videos.filter_by(transcript_available=True).count() }} con transcripción
                             </small>
                         </p>
+                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#videos-{{ channel.id }}">
+                            <i class="bi bi-chevron-down"></i> Ver videos ({{ channel.video_count }})
+                        </button>
+                        <div class="collapse mt-2" id="videos-{{ channel.id }}">
+                            <div class="list-group list-group-flush" style="max-height: 320px; overflow-y: auto;">
+                                {% for v in channel.videos.all()|sort(attribute='published_at', reverse=True) %}
+                                <div class="list-group-item px-2 py-2 d-flex align-items-center gap-2" style="font-size:0.82rem;">
+                                    {% if v.transcript_available %}
+                                        <span class="badge bg-success" title="Transcripción OK"><i class="bi bi-check-circle"></i></span>
+                                    {% else %}
+                                        <span class="badge bg-danger" title="Sin transcripción"><i class="bi bi-x-circle"></i></span>
+                                    {% endif %}
+                                    <a href="{{ v.url }}" target="_blank" class="text-truncate flex-grow-1" style="text-decoration:none;">
+                                        {{ v.title }}
+                                    </a>
+                                    <small class="text-muted" style="white-space:nowrap;">
+                                        {% if v.topics.count() > 0 %}
+                                            <i class="bi bi-tag-fill text-success" title="{{ v.topics.count() }} tema(s)"></i> {{ v.topics.count() }}
+                                        {% else %}
+                                            <i class="bi bi-tag text-muted" title="Sin temas"></i> 0
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                         {% endif %}
 
                         {% if channel.description %}
