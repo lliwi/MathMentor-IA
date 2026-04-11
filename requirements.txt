@@ -31,6 +31,7 @@ yt-dlp==2024.12.13
 # AI and ML
 openai==1.54.0
 groq==0.11.0
+faster-whisper==1.1.0
 sentence-transformers==2.3.1
 transformers==4.36.2
 # torch is installed separately in the Dockerfile from the CPU-only index

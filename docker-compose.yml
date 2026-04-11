@@ -51,6 +51,13 @@ services:
       - ./app:/app/app
       - ./uploads:/app/uploads
       - ./migrations:/app/migrations
+      # Optional YouTube cookies for anti-bot bypass:
+      # 1. Export cookies from your browser using an extension like
+      #    "Get cookies.txt LOCALLY" (Netscape format)
+      # 2. Save the file as ./cookies.txt in this directory
+      # 3. Uncomment the line below
+      # 4. Set YOUTUBE_COOKIES_FILE=/app/cookies.txt in .env
+      # - ./cookies.txt:/app/cookies.txt:ro
     depends_on:
       db:
         condition: service_healthy

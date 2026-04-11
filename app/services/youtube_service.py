@@ -190,127 +190,327 @@ class YouTubeService:
             raise Exception(f"Error al obtener videos del canal: {str(e)}")
 
     @staticmethod
-    def generate_transcript_with_whisper(video_url: str, use_groq: bool = None) -> Optional[List[Dict]]:
+    @staticmethod
+    def _download_audio(video_url: str) -> Optional[str]:
         """
-        Generate transcript using Whisper API (Groq or OpenAI)
+        Download audio from a YouTube video to a temporary file.
+        Uses yt-dlp primarily (more robust + cookie support), with pytubefix as fallback.
 
         Args:
             video_url: YouTube video URL
-            use_groq: If True, use Groq. If False, use OpenAI. If None, auto-detect based on available keys.
 
         Returns:
-            List of dicts with 'text', 'start', 'duration' keys, or None if failed
+            Path to the downloaded audio file, or None if failed
         """
-        temp_audio_path = None
+        # 1. Try yt-dlp first (most robust against bot detection)
+        result = YouTubeService._download_audio_with_ytdlp(video_url)
+        if result:
+            return result
+
+        # 2. Fallback: pytubefix
+        print("[YouTubeService] yt-dlp falló, intentando con pytubefix...")
+        return YouTubeService._download_audio_with_pytubefix(video_url)
+
+    @staticmethod
+    def _download_audio_with_ytdlp(video_url: str) -> Optional[str]:
+        """Download audio using yt-dlp (supports cookies and better bot bypass)."""
         try:
-            # Auto-detect provider if not specified
-            if use_groq is None:
-                groq_key = os.environ.get('GROQ_API_KEY')
-                openai_key = os.environ.get('OPENAI_API_KEY')
+            import yt_dlp
 
-                if groq_key:
-                    use_groq = True
-                elif openai_key:
-                    use_groq = False
-                else:
-                    print("[YouTubeService] ERROR: No hay API key configurada (GROQ_API_KEY o OPENAI_API_KEY)")
-                    return None
+            video_id = video_url.split("=")[-1]
+            temp_dir = tempfile.gettempdir()
+            outtmpl = os.path.join(temp_dir, f'yt_audio_{video_id}.%(ext)s')
 
-            api_provider = "Groq" if use_groq else "OpenAI"
-            print(f"[YouTubeService] Generando transcripción con Whisper ({api_provider}) para {video_url}")
+            ydl_opts = {
+                **YouTubeService._get_ytdlp_base_opts(),
+                'format': 'bestaudio/best',
+                'outtmpl': outtmpl,
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '64',
+                }],
+                'noplaylist': True,
+            }
 
-            # Download audio
+            print(f"[YouTubeService] Descargando audio con yt-dlp...")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([video_url])
+
+            # After postprocessing, file will be .mp3
+            final_path = os.path.join(temp_dir, f'yt_audio_{video_id}.mp3')
+            if os.path.exists(final_path):
+                file_size = os.path.getsize(final_path) / (1024 * 1024)
+                print(f"[YouTubeService] Audio descargado (yt-dlp): {file_size:.1f} MB")
+                return final_path
+
+            # Look for any extension (fallback if ffmpeg conversion failed)
+            import glob
+            candidates = glob.glob(os.path.join(temp_dir, f'yt_audio_{video_id}.*'))
+            if candidates:
+                path = candidates[0]
+                file_size = os.path.getsize(path) / (1024 * 1024)
+                print(f"[YouTubeService] Audio descargado (yt-dlp, sin conversión): {file_size:.1f} MB")
+                return path
+
+            return None
+
+        except Exception as e:
+            print(f"[YouTubeService] Error descargando audio con yt-dlp: {type(e).__name__}: {e}")
+            return None
+
+    @staticmethod
+    def _download_audio_with_pytubefix(video_url: str) -> Optional[str]:
+        """Download audio using pytubefix (fallback)."""
+        try:
             yt = YouTube(video_url)
-            # Use lower bitrate for faster transcription
             audio_stream = yt.streams.filter(only_audio=True).order_by('abr').asc().first()
 
             if not audio_stream:
                 print(f"[YouTubeService] No se encontró stream de audio")
                 return None
 
-            # Get file extension from stream
             file_extension = audio_stream.subtype
-
-            # Ensure compatible format for Whisper
             if file_extension not in ['m4a', 'mp3', 'webm', 'mp4', 'mpga', 'wav', 'mpeg', 'ogg', 'flac']:
-                file_extension = 'mp4'  # Default to mp4
+                file_extension = 'mp4'
 
-            # Download to temporary file
             temp_dir = tempfile.gettempdir()
             temp_filename = f'yt_audio_{video_url.split("=")[-1]}'
 
-            print(f"[YouTubeService] Descargando audio ({audio_stream.mime_type}, {audio_stream.abr})...")
+            print(f"[YouTubeService] Descargando audio con pytubefix ({audio_stream.mime_type}, {audio_stream.abr})...")
             downloaded_path = audio_stream.download(output_path=temp_dir, filename=temp_filename)
 
-            # Rename to have correct extension
             temp_audio_path = os.path.join(temp_dir, f'{temp_filename}.{file_extension}')
             if downloaded_path != temp_audio_path:
                 os.rename(downloaded_path, temp_audio_path)
 
-            # Check file size (25MB limit for Whisper API)
-            file_size = os.path.getsize(temp_audio_path) / (1024 * 1024)  # MB
-            if file_size > 25:
-                print(f"[YouTubeService] ⚠️  Archivo muy grande ({file_size:.1f} MB), comprimiendo...")
-                # TODO: Implement compression or chunking for large files
-                print(f"[YouTubeService] ERROR: Archivo excede 25MB - compresión no implementada aún")
-                return None
+            file_size = os.path.getsize(temp_audio_path) / (1024 * 1024)
+            print(f"[YouTubeService] Audio descargado (pytubefix): {file_size:.1f} MB")
+            return temp_audio_path
 
-            print(f"[YouTubeService] Transcribiendo con Whisper ({api_provider}, {file_size:.1f} MB)...")
+        except Exception as e:
+            print(f"[YouTubeService] Error descargando audio con pytubefix: {str(e)}")
+            return None
 
-            # Transcribe with Whisper
-            if use_groq:
-                # Use Groq (faster and free/cheaper)
-                from groq import Groq
-                groq_client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
-                with open(temp_audio_path, 'rb') as audio_file:
-                    response = groq_client.audio.transcriptions.create(
-                        model="whisper-large-v3",
-                        file=audio_file,
-                        response_format="verbose_json",
-                        language="es"
-                    )
-            else:
-                # Use OpenAI
-                with open(temp_audio_path, 'rb') as audio_file:
-                    client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-                    response = client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=audio_file,
-                        response_format="verbose_json",
-                        language="es"
-                    )
+    @staticmethod
+    def _detect_whisper_provider() -> str:
+        """
+        Detect which Whisper provider to use based on available API keys and libraries.
 
-            # Convert Whisper response to transcript format
+        Returns:
+            'groq', 'openai', 'local', or 'none'
+        """
+        if os.environ.get('GROQ_API_KEY'):
+            return 'groq'
+        if os.environ.get('OPENAI_API_KEY'):
+            return 'openai'
+        try:
+            import faster_whisper
+            return 'local'
+        except ImportError:
+            pass
+        return 'none'
+
+    @staticmethod
+    def _transcribe_with_groq(audio_path: str) -> Optional[List[Dict]]:
+        """Transcribe audio using Groq Whisper API."""
+        from groq import Groq
+        groq_client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
+
+        file_size = os.path.getsize(audio_path) / (1024 * 1024)
+        if file_size > 25:
+            print(f"[YouTubeService] ERROR: Archivo excede 25MB ({file_size:.1f} MB) para Groq API")
+            return None
+
+        with open(audio_path, 'rb') as audio_file:
+            response = groq_client.audio.transcriptions.create(
+                model="whisper-large-v3",
+                file=audio_file,
+                response_format="verbose_json",
+                language="es"
+            )
+
+        return YouTubeService._parse_api_response(response)
+
+    @staticmethod
+    def _transcribe_with_openai(audio_path: str) -> Optional[List[Dict]]:
+        """Transcribe audio using OpenAI Whisper API."""
+        file_size = os.path.getsize(audio_path) / (1024 * 1024)
+        if file_size > 25:
+            print(f"[YouTubeService] ERROR: Archivo excede 25MB ({file_size:.1f} MB) para OpenAI API")
+            return None
+
+        with open(audio_path, 'rb') as audio_file:
+            client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+            response = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="verbose_json",
+                language="es"
+            )
+
+        return YouTubeService._parse_api_response(response)
+
+    @staticmethod
+    def _transcribe_with_faster_whisper(audio_path: str) -> Optional[List[Dict]]:
+        """
+        Transcribe audio locally using faster-whisper.
+        No file size limit, no API key required.
+        Uses 'medium' model by default (good balance of speed/quality for Spanish).
+        """
+        try:
+            from faster_whisper import WhisperModel
+
+            model_size = os.environ.get('WHISPER_LOCAL_MODEL', 'medium')
+            device = os.environ.get('WHISPER_DEVICE', 'auto')
+            compute_type = os.environ.get('WHISPER_COMPUTE_TYPE', 'auto')
+
+            print(f"[YouTubeService] Cargando modelo faster-whisper ({model_size}, device={device})...")
+            model = WhisperModel(model_size, device=device, compute_type=compute_type)
+
+            print(f"[YouTubeService] Transcribiendo localmente...")
+            segments, info = model.transcribe(audio_path, language="es", beam_size=5)
+
             transcript = []
-            if hasattr(response, 'segments') and response.segments:
-                for segment in response.segments:
-                    # Access segment attributes (not dict keys)
-                    transcript.append({
-                        'text': getattr(segment, 'text', '').strip(),
-                        'start': getattr(segment, 'start', 0.0),
-                        'duration': getattr(segment, 'end', 0.0) - getattr(segment, 'start', 0.0)
-                    })
-            else:
-                # Fallback: single segment
+            for segment in segments:
                 transcript.append({
-                    'text': response.text,
-                    'start': 0.0,
-                    'duration': yt.length
+                    'text': segment.text.strip(),
+                    'start': segment.start,
+                    'duration': segment.end - segment.start
                 })
 
-            print(f"[YouTubeService] ✅ Transcripción generada: {len(transcript)} segmentos")
+            print(f"[YouTubeService] Transcripción local completada: {len(transcript)} segmentos "
+                  f"(idioma detectado: {info.language}, probabilidad: {info.language_probability:.2f})")
+            return transcript if transcript else None
+
+        except Exception as e:
+            print(f"[YouTubeService] Error en transcripción local con faster-whisper: {str(e)}")
+            return None
+
+    @staticmethod
+    def _parse_api_response(response) -> List[Dict]:
+        """Parse Whisper API response (Groq/OpenAI) into transcript format."""
+        transcript = []
+        if hasattr(response, 'segments') and response.segments:
+            for segment in response.segments:
+                transcript.append({
+                    'text': getattr(segment, 'text', '').strip(),
+                    'start': getattr(segment, 'start', 0.0),
+                    'duration': getattr(segment, 'end', 0.0) - getattr(segment, 'start', 0.0)
+                })
+        else:
+            transcript.append({
+                'text': response.text,
+                'start': 0.0,
+                'duration': 0.0
+            })
+        return transcript
+
+    @staticmethod
+    def generate_transcript_with_whisper(video_url: str, use_groq: bool = None) -> Optional[List[Dict]]:
+        """
+        Generate transcript using Whisper. Auto-detects the best available provider:
+        1. Groq API (if GROQ_API_KEY is set) - fastest
+        2. OpenAI API (if OPENAI_API_KEY is set)
+        3. faster-whisper local (if installed) - no API key needed, no file size limit
+
+        Args:
+            video_url: YouTube video URL
+            use_groq: If True, force Groq. If False, force OpenAI. If None, auto-detect.
+
+        Returns:
+            List of dicts with 'text', 'start', 'duration' keys, or None if failed
+        """
+        temp_audio_path = None
+        try:
+            # Determine provider
+            if use_groq is True:
+                provider = 'groq'
+            elif use_groq is False:
+                provider = 'openai'
+            else:
+                provider = YouTubeService._detect_whisper_provider()
+
+            if provider == 'none':
+                print("[YouTubeService] ERROR: No hay proveedor de transcripción disponible. "
+                      "Configure GROQ_API_KEY, OPENAI_API_KEY, o instale faster-whisper.")
+                return None
+
+            provider_names = {'groq': 'Groq API', 'openai': 'OpenAI API', 'local': 'faster-whisper (local)'}
+            print(f"[YouTubeService] Generando transcripción con {provider_names[provider]} para {video_url}")
+
+            # Download audio
+            temp_audio_path = YouTubeService._download_audio(video_url)
+            if not temp_audio_path:
+                return None
+
+            file_size = os.path.getsize(temp_audio_path) / (1024 * 1024)
+            print(f"[YouTubeService] Transcribiendo con {provider_names[provider]} ({file_size:.1f} MB)...")
+
+            # Transcribe with selected provider, with fallback to local
+            transcript = None
+
+            if provider == 'groq':
+                transcript = YouTubeService._transcribe_with_groq(temp_audio_path)
+                if not transcript and file_size > 25:
+                    print("[YouTubeService] Archivo excede 25MB, intentando transcripción local...")
+                    transcript = YouTubeService._transcribe_with_faster_whisper(temp_audio_path)
+            elif provider == 'openai':
+                transcript = YouTubeService._transcribe_with_openai(temp_audio_path)
+                if not transcript and file_size > 25:
+                    print("[YouTubeService] Archivo excede 25MB, intentando transcripción local...")
+                    transcript = YouTubeService._transcribe_with_faster_whisper(temp_audio_path)
+            elif provider == 'local':
+                transcript = YouTubeService._transcribe_with_faster_whisper(temp_audio_path)
+
+            if transcript:
+                print(f"[YouTubeService] Transcripción generada: {len(transcript)} segmentos")
             return transcript
 
         except Exception as e:
             print(f"[YouTubeService] Error al generar transcripción con Whisper: {str(e)}")
             return None
         finally:
-            # Clean up temporary file
             if temp_audio_path and os.path.exists(temp_audio_path):
                 try:
                     os.unlink(temp_audio_path)
                 except:
                     pass
+
+    @staticmethod
+    def _get_ytdlp_base_opts() -> Dict:
+        """
+        Base yt-dlp options with anti-bot bypasses:
+        - Realistic user agent
+        - Cookies file (if YOUTUBE_COOKIES_FILE is set)
+        - Cookies from browser (if YOUTUBE_COOKIES_FROM_BROWSER is set, e.g. 'firefox', 'chrome')
+        """
+        opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'user_agent': (
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                'Chrome/131.0.0.0 Safari/537.36'
+            ),
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['web', 'android', 'ios'],
+                }
+            },
+        }
+
+        cookies_file = os.environ.get('YOUTUBE_COOKIES_FILE')
+        if cookies_file and os.path.exists(cookies_file):
+            opts['cookiefile'] = cookies_file
+            print(f"[YouTubeService] Usando cookies desde archivo: {cookies_file}")
+
+        cookies_browser = os.environ.get('YOUTUBE_COOKIES_FROM_BROWSER')
+        if cookies_browser:
+            opts['cookiesfrombrowser'] = (cookies_browser,)
+            print(f"[YouTubeService] Usando cookies del navegador: {cookies_browser}")
+
+        return opts
 
     @staticmethod
     def _extract_transcript_with_ytdlp(video_id: str, languages=('es', 'es-ES', 'en', 'en-US')) -> Optional[List[Dict]]:
@@ -327,13 +527,12 @@ class YouTubeService:
             with tempfile.TemporaryDirectory() as tmpdir:
                 outtmpl = os.path.join(tmpdir, '%(id)s.%(ext)s')
                 ydl_opts = {
+                    **YouTubeService._get_ytdlp_base_opts(),
                     'skip_download': True,
                     'writesubtitles': True,
                     'writeautomaticsub': True,
                     'subtitleslangs': list(languages),
                     'subtitlesformat': 'json3',
-                    'quiet': True,
-                    'no_warnings': True,
                     'outtmpl': outtmpl,
                 }
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -386,62 +585,65 @@ class YouTubeService:
         Returns:
             List of dicts with 'text', 'start', 'duration' keys, or None if not available
         """
+        # 1. Try yt-dlp first - most robust against bot detection
         try:
-            # 1. Try yt-dlp first - most robust against bot detection
             result = YouTubeService._extract_transcript_with_ytdlp(video_id)
             if result:
                 print(f"[YouTubeService] Transcripción obtenida vía yt-dlp para {video_id} ({len(result)} segmentos)")
                 return result
+        except Exception as e:
+            print(f"[YouTubeService] yt-dlp falló para {video_id}: {type(e).__name__}: {e}")
 
-            # 2. Try youtube-transcript-api direct approach
-            try:
-                return YouTubeTranscriptApi.get_transcript(video_id, languages=['es', 'en', 'es-ES', 'en-US'])
-            except:
-                pass
+        # 2. Try youtube-transcript-api direct approach
+        try:
+            result = YouTubeTranscriptApi.get_transcript(video_id, languages=['es', 'en', 'es-ES', 'en-US'])
+            if result:
+                print(f"[YouTubeService] Transcripción obtenida vía youtube-transcript-api para {video_id}")
+                return result
+        except Exception as e:
+            print(f"[YouTubeService] youtube-transcript-api directo falló para {video_id}: {type(e).__name__}")
 
-            # Fallback: use transcript list API
+        # 3. Try transcript list API (manual, auto-generated, any)
+        try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
 
+            # Try manual transcript first
             try:
-                # Try manual transcript first
                 transcript = transcript_list.find_transcript([language, 'en'])
-                return transcript.fetch()
-            except:
+                result = transcript.fetch()
+                if result:
+                    return result
+            except Exception:
                 pass
 
+            # Fallback to auto-generated
             try:
-                # Fallback to auto-generated
                 transcript = transcript_list.find_generated_transcript([language, 'en'])
-                return transcript.fetch()
-            except:
+                result = transcript.fetch()
+                if result:
+                    return result
+            except Exception:
                 pass
 
-            # Last resort: get any available transcript
+            # Last resort: any available transcript
             for transcript in transcript_list:
                 try:
-                    return transcript.fetch()
-                except:
+                    result = transcript.fetch()
+                    if result:
+                        return result
+                except Exception:
                     continue
-
-            # If no transcript found and generation is enabled, use Whisper
-            if generate_if_missing:
-                video_url = f'https://www.youtube.com/watch?v={video_id}'
-                return YouTubeService.generate_transcript_with_whisper(video_url)
-
-            return None
-
-        except (TranscriptsDisabled, NoTranscriptFound):
-            print(f"[YouTubeService] No hay transcripción disponible para video {video_id}")
-
-            # Try to generate with Whisper
-            if generate_if_missing:
-                video_url = f'https://www.youtube.com/watch?v={video_id}'
-                return YouTubeService.generate_transcript_with_whisper(video_url)
-
-            return None
         except Exception as e:
-            print(f"[YouTubeService] Error al extraer transcripción de {video_id}: {str(e)}")
-            return None
+            print(f"[YouTubeService] list_transcripts falló para {video_id}: {type(e).__name__}")
+
+        # 4. Final fallback: generate transcript with Whisper (Groq/OpenAI/local)
+        if generate_if_missing:
+            print(f"[YouTubeService] No se encontró transcripción existente para {video_id}, intentando generar con Whisper...")
+            video_url = f'https://www.youtube.com/watch?v={video_id}'
+            return YouTubeService.generate_transcript_with_whisper(video_url)
+
+        print(f"[YouTubeService] No hay transcripción disponible para video {video_id}")
+        return None
 
     @staticmethod
     def format_timestamp(seconds: float) -> str:

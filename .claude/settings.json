@@ -13,7 +13,9 @@
       "Bash(docker-compose -f \"/home/llibert/Documents/development/flask/MathMentor IA/docker-compose.yml\" logs --tail=5 web)",
       "mcp__chrome-devtools__take_snapshot",
       "mcp__chrome-devtools__fill",
-      "mcp__chrome-devtools__click"
+      "mcp__chrome-devtools__click",
+      "Bash(grep -E \"\\\\.\\(html|js\\)$\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app/services/youtube_service.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
     ]
   }
 }
