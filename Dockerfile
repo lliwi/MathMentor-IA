@@ -11,7 +11,18 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     libpq-dev \
     ffmpeg \
+    nodejs \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Deno (default JS runtime for yt-dlp's EJS / n-challenge solver)
+# Required by YouTube extractor in yt-dlp 2026+
+RUN curl -fsSL https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip -o /tmp/deno.zip \
+    && unzip /tmp/deno.zip -d /usr/local/bin/ \
+    && rm /tmp/deno.zip \
+    && chmod +x /usr/local/bin/deno \
+    && deno --version
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .

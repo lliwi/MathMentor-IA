@@ -31,6 +31,9 @@ instance/
 .env
 .env.local
 
+# YouTube cookies (contains session credentials, never commit)
+cookies.txt
+
 # IDE
 .vscode/
 .idea/

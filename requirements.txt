@@ -24,9 +24,14 @@ PyPDF2==3.0.1
 pdfplumber==0.11.0
 
 # YouTube Processing
+# IMPORTANT: yt-dlp must be kept up-to-date because YouTube changes their player frequently.
+# If transcription stops working, update to the latest version.
 youtube-transcript-api==0.6.2
 pytubefix==10.3.5
-yt-dlp==2024.12.13
+yt-dlp>=2026.3.17
+# PO Token provider plugin: required for datacenter IPs to bypass YouTube bot detection.
+# Talks to the bgutil-pot sidecar service (see docker-compose.yml).
+bgutil-ytdlp-pot-provider>=1.0.0
 
 # AI and ML
 openai==1.54.0

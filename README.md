@@ -74,6 +74,194 @@ La aplicación incluye múltiples optimizaciones de performance:
 
 Ver [PERFORMANCE_OPTIMIZATIONS.md](PERFORMANCE_OPTIMIZATIONS.md) para detalles completos y [CACHE_PREFETCHING.md](CACHE_PREFETCHING.md) para la funcionalidad de precarga.
 
+## Integración con YouTube (Importación y Transcripción de Vídeos)
+
+MathMentor IA permite importar vídeos de YouTube como material de estudio. El sistema extrae la transcripción del vídeo (si existe) o la genera automáticamente mediante Whisper cuando no está disponible.
+
+### Estrategia de Extracción de Transcripciones
+
+El servicio [app/services/youtube_service.py](app/services/youtube_service.py) implementa una cadena de *fallbacks* para maximizar el índice de éxito:
+
+1. **`youtube-transcript-api`** — Intenta obtener la transcripción oficial publicada por el creador del vídeo.
+2. **`pytubefix` (subtítulos)** — Si la API oficial falla, intenta extraer los subtítulos mediante pytubefix.
+3. **`yt-dlp` (subtítulos)** — Si los dos métodos anteriores fallan, usa yt-dlp para intentar obtener subtítulos manuales o auto-generados.
+4. **Whisper (último recurso)** — Si no existe ninguna transcripción, descarga el audio del vídeo y lo transcribe localmente o vía API.
+
+Cada método está aislado en su propio `try/except`, de modo que un fallo en uno no impide que los siguientes se ejecuten. Whisper siempre se invoca como último recurso si todos los anteriores fracasan.
+
+### Proveedores de Whisper Soportados
+
+El método `_detect_whisper_provider()` auto-detecta el proveedor disponible en el siguiente orden:
+
+| Proveedor | Configuración | Notas |
+|-----------|---------------|-------|
+| **Groq API** | `GROQ_API_KEY` en `.env` | Más rápido y económico. Usa `whisper-large-v3`. |
+| **OpenAI API** | `OPENAI_API_KEY` en `.env` | Alta calidad. Usa `whisper-1`. |
+| **Local (faster-whisper)** | Sin claves API | Ejecuta Whisper en CPU dentro del contenedor. No requiere internet ni costes por API. |
+
+Variables opcionales para Whisper local:
+
+```env
+WHISPER_LOCAL_MODEL=base          # tiny, base, small, medium, large-v3
+WHISPER_DEVICE=cpu                # cpu o cuda
+WHISPER_COMPUTE_TYPE=int8         # int8 (rápido), float16, float32
+```
+
+### Bypass de la Detección Anti-Bot de YouTube
+
+YouTube bloquea agresivamente las IPs de *datacenters* (típico de servidores en producción), devolviendo errores como `Sign in to confirm you're not a bot`. MathMentor IA implementa una combinación de técnicas para sortear este bloqueo:
+
+#### 1. PO Token Provider (`bgutil-pot`)
+
+Un *sidecar* de Docker Compose genera *Proof-of-Origin Tokens* que yt-dlp envía a YouTube para autenticar las peticiones como legítimas.
+
+```yaml
+# docker-compose.yml
+bgutil-pot:
+  image: brainicism/bgutil-ytdlp-pot-provider:latest
+  container_name: mathmentor_bgutil_pot
+  restart: unless-stopped
+```
+
+El servicio `web` se conecta a él vía:
+
+```yaml
+environment:
+  - getpot_bgutil_baseurl=http://bgutil-pot:4416
+```
+
+El plugin Python `bgutil-ytdlp-pot-provider` (instalado en `requirements.txt`) hace de puente entre yt-dlp y el sidecar.
+
+#### 2. JavaScript Runtime (Deno)
+
+yt-dlp (desde 2026+) requiere un *runtime* de JavaScript para resolver los *n-challenges* del reproductor de YouTube. El `Dockerfile` instala **Deno** como *runtime* por defecto:
+
+```dockerfile
+RUN curl -fsSL https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip -o /tmp/deno.zip \
+    && unzip /tmp/deno.zip -d /usr/local/bin/ \
+    && chmod +x /usr/local/bin/deno
+```
+
+#### 3. EJS Challenge Solver (remote_components)
+
+yt-dlp 2026+ descarga el *solver* de *challenges* (EJS) desde GitHub. Esto se activa con la opción `remote_components` en las opciones base de yt-dlp:
+
+```python
+# app/services/youtube_service.py
+opts = {
+    ...
+    'remote_components': ['ejs:github'],
+}
+```
+
+#### 4. Cookies de Navegador (opcional pero recomendado)
+
+Para los vídeos más restrictivos, se pueden proporcionar *cookies* de sesión exportadas de un navegador autenticado en YouTube:
+
+1. Instalar una extensión como **"Get cookies.txt LOCALLY"** en el navegador.
+2. Abrir YouTube con una cuenta activa y exportar las *cookies* en formato Netscape.
+3. Guardar el archivo como `./cookies.txt` en la raíz del proyecto.
+4. Descomentar la línea del volumen en `docker-compose.yml`:
+
+   ```yaml
+   volumes:
+     - ./cookies.txt:/app/cookies.txt:ro
+   ```
+
+5. Añadir en `.env`:
+
+   ```env
+   YOUTUBE_COOKIES_FILE=/app/cookies.txt
+   ```
+
+6. Reiniciar el contenedor: `docker compose restart web`
+
+> ⚠️ **Seguridad:** `cookies.txt` contiene credenciales de sesión. Ya está incluido en `.gitignore` — **nunca lo comites al repositorio**.
+
+> 📝 **Nota técnica:** El archivo `cookies.txt` se monta como *read-only*, pero yt-dlp necesita actualizarlo. El servicio copia automáticamente las *cookies* a `/tmp/yt_cookies.txt` (escribible) al arrancar. Ver `_get_writable_cookies_path()` en [app/services/youtube_service.py](app/services/youtube_service.py).
+
+#### Variables de Entorno de Control
+
+```env
+# Ruta al archivo cookies.txt dentro del contenedor
+YOUTUBE_COOKIES_FILE=/app/cookies.txt
+
+# Alternativa: extraer cookies automáticamente del navegador del host
+# (útil en entornos de desarrollo local; inviable en servidores sin display)
+YOUTUBE_COOKIES_FROM_BROWSER=chrome
+
+# Deshabilitar cookies forzosamente (solo usar bgutil-pot)
+YOUTUBE_DISABLE_COOKIES=1
+```
+
+### Arquitectura de Bypass Completa
+
+```
+yt-dlp (Python)
+   │
+   ├── Cookies de navegador  ──► autenticación de sesión
+   ├── bgutil-pot sidecar    ──► PO Token (Proof of Origin)
+   ├── Deno                  ──► resuelve n-challenges JS
+   └── ejs:github            ──► descarga solver desde GitHub
+         │
+         ▼
+   YouTube API acepta la petición ✓
+```
+
+Las cuatro piezas son complementarias:
+- **Sin `bgutil-pot`** → YouTube rechaza la petición desde IPs de *datacenter*.
+- **Sin Deno** → yt-dlp falla al resolver el *n-challenge*.
+- **Sin `ejs:github`** → yt-dlp no encuentra el *script solver* aunque tenga *runtime*.
+- **Sin cookies** → Funciona en muchos vídeos, pero falla en los restringidos por edad o región.
+
+### Dependencias Instaladas
+
+Añadidas en `requirements.txt`:
+
+```
+youtube-transcript-api==0.6.2
+pytubefix==10.3.5
+yt-dlp>=2026.3.17                 # Mantener siempre actualizado
+bgutil-ytdlp-pot-provider>=1.0.0
+faster-whisper==1.1.0             # Whisper local (CPU, CTranslate2)
+```
+
+Añadidas en `Dockerfile` (paquetes del sistema):
+
+```
+ffmpeg         # requerido por faster-whisper
+nodejs         # fallback de runtime JS
+curl, unzip    # para descargar Deno
+deno           # runtime JS por defecto de yt-dlp
+```
+
+### Diagnóstico de Problemas
+
+**Verificar que `bgutil-pot` está activo:**
+```bash
+docker compose exec web curl -s http://bgutil-pot:4416/ping
+```
+
+**Verificar que Deno está instalado en el contenedor:**
+```bash
+docker compose exec web deno --version
+```
+
+**Probar descarga de formatos manualmente:**
+```bash
+docker compose exec web sh -c \
+  'yt-dlp --remote-components ejs:github --cookies /app/cookies.txt -F "https://www.youtube.com/watch?v=VIDEO_ID"'
+```
+
+Si el comando anterior devuelve una lista de formatos (m4a, webm, mp4...) significa que toda la cadena funciona correctamente.
+
+**Actualizar yt-dlp (crítico):**
+YouTube cambia su reproductor con frecuencia. Si la extracción deja de funcionar, actualizar la versión de yt-dlp en `requirements.txt` y reconstruir la imagen:
+```bash
+docker compose build --no-cache web
+docker compose up -d
+```
+
 ### Migración de Bases de Datos Existentes
 
 Si ya tienes una instalación anterior y quieres actualizar a la versión con selección de procedimientos:
@@ -355,6 +543,31 @@ Asegúrate de usar la imagen `pgvector/pgvector:pg16` en docker-compose.yml
 ### Error de IA: "API key not configured"
 
 Configura la clave API correspondiente en el archivo `.env`
+
+### YouTube: "Sign in to confirm you're not a bot"
+
+Indica que YouTube está bloqueando la IP del servidor. Verifica en orden:
+
+1. **`bgutil-pot` está corriendo**: `docker compose ps bgutil-pot`
+2. **El sidecar es alcanzable**: `docker compose exec web curl -s http://bgutil-pot:4416/ping`
+3. **Deno está instalado**: `docker compose exec web deno --version`
+4. **yt-dlp está actualizado**: `docker compose exec web yt-dlp --version` (debe ser ≥ 2026.3.17)
+5. **Como último recurso**, proporciona un `cookies.txt` de un navegador autenticado (ver sección [Cookies de Navegador](#4-cookies-de-navegador-opcional-pero-recomendado)).
+
+### YouTube: "Requested format is not available"
+
+Normalmente causado por un desajuste entre el `player_client` y las *cookies*. El servicio fuerza automáticamente `player_client: ['web']` cuando hay *cookies* presentes. Si persiste, verifica que `YOUTUBE_COOKIES_FILE` apunte a un archivo válido en formato Netscape.
+
+### YouTube: "Read-only file system: '/app/cookies.txt'"
+
+yt-dlp necesita actualizar el archivo de *cookies*. El servicio ya maneja esto copiando las *cookies* a `/tmp/yt_cookies.txt` al arrancar. Si ves este error, verifica que `_get_writable_cookies_path()` se está ejecutando correctamente en los logs.
+
+### Whisper: "No se detectó proveedor de Whisper"
+
+Configura al menos uno en `.env`:
+- `GROQ_API_KEY=...` (recomendado, más rápido)
+- `OPENAI_API_KEY=...`
+- Sin claves → el sistema usa `faster-whisper` local automáticamente (más lento, pero sin coste).
 
 ## Contribución
 

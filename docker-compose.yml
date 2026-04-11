@@ -16,6 +16,16 @@ services:
       timeout: 5s
       retries: 5
 
+  # YouTube PO Token provider (sidecar service)
+  # Generates Proof-of-Origin tokens required by YouTube to bypass bot detection
+  # from datacenter IPs. Used by yt-dlp via the bgutil-ytdlp-pot-provider plugin.
+  bgutil-pot:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: mathmentor_bgutil_pot
+    restart: unless-stopped
+    networks:
+      - mathmentor_network
+
   redis:
     image: redis:7-alpine
     container_name: mathmentor_redis
@@ -45,6 +55,8 @@ services:
       - REDIS_DB=0
       - SECRET_KEY=dev-secret-key-change-in-production
       - PYTHONUNBUFFERED=1
+      # PO Token provider for yt-dlp (bypasses YouTube bot detection on datacenters)
+      - getpot_bgutil_baseurl=http://bgutil-pot:4416
     ports:
       - "5000:5000"
     volumes:
@@ -63,6 +75,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      bgutil-pot:
+        condition: service_started
 
 volumes:
   postgres_data:

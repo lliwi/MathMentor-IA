@@ -190,7 +190,6 @@ class YouTubeService:
             raise Exception(f"Error al obtener videos del canal: {str(e)}")
 
     @staticmethod
-    @staticmethod
     def _download_audio(video_url: str) -> Optional[str]:
         """
         Download audio from a YouTube video to a temporary file.
@@ -477,12 +476,46 @@ class YouTubeService:
                 except:
                     pass
 
+    _cookies_writable_path = None
+
+    @staticmethod
+    def _get_writable_cookies_path() -> Optional[str]:
+        """
+        Returns a writable copy of the cookies file. yt-dlp needs to write to the
+        cookies file to update session tokens, so a read-only mount won't work.
+        We copy it once to /tmp and reuse it.
+        """
+        cookies_file = os.environ.get('YOUTUBE_COOKIES_FILE')
+        if not cookies_file or not os.path.exists(cookies_file):
+            return None
+
+        # Use a stable path in /tmp so yt-dlp can update it across requests
+        writable_path = os.path.join(tempfile.gettempdir(), 'yt_cookies.txt')
+
+        # Copy if missing or if source is newer (e.g., admin updated cookies.txt)
+        try:
+            src_mtime = os.path.getmtime(cookies_file)
+            needs_copy = (
+                not os.path.exists(writable_path)
+                or os.path.getmtime(writable_path) < src_mtime
+            )
+            if needs_copy:
+                import shutil
+                shutil.copy2(cookies_file, writable_path)
+                os.chmod(writable_path, 0o644)
+                print(f"[YouTubeService] Cookies copiadas a {writable_path} (escribible)")
+        except Exception as e:
+            print(f"[YouTubeService] Error copiando cookies: {e}")
+            return None
+
+        return writable_path
+
     @staticmethod
     def _get_ytdlp_base_opts() -> Dict:
         """
         Base yt-dlp options with anti-bot bypasses:
         - Realistic user agent
-        - Cookies file (if YOUTUBE_COOKIES_FILE is set)
+        - Cookies file (if YOUTUBE_COOKIES_FILE is set) - copied to a writable location
         - Cookies from browser (if YOUTUBE_COOKIES_FROM_BROWSER is set, e.g. 'firefox', 'chrome')
         """
         opts = {
@@ -493,22 +526,43 @@ class YouTubeService:
                 'AppleWebKit/537.36 (KHTML, like Gecko) '
                 'Chrome/131.0.0.0 Safari/537.36'
             ),
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['web', 'android', 'ios'],
-                }
-            },
+            # Required for yt-dlp 2026+: download EJS challenge solver from GitHub.
+            # Combined with deno (JS runtime) and bgutil-pot (PO Token), this allows
+            # yt-dlp to bypass YouTube's bot detection on datacenter IPs.
+            'remote_components': ['ejs:github'],
         }
 
-        cookies_file = os.environ.get('YOUTUBE_COOKIES_FILE')
-        if cookies_file and os.path.exists(cookies_file):
-            opts['cookiefile'] = cookies_file
-            print(f"[YouTubeService] Usando cookies desde archivo: {cookies_file}")
+        # When using cookies, only use the 'web' player client (cookies are web-only).
+        # When using bgutil-pot without cookies, 'tv' or 'mweb' work best.
+        disable_cookies = os.environ.get('YOUTUBE_DISABLE_COOKIES', '').lower() in ('1', 'true', 'yes')
+        cookies_present = not disable_cookies and (
+            os.environ.get('YOUTUBE_COOKIES_FILE')
+            or os.environ.get('YOUTUBE_COOKIES_FROM_BROWSER')
+        )
+        if cookies_present:
+            opts['extractor_args'] = {'youtube': {'player_client': ['web']}}
+        else:
+            # Without cookies + bgutil-pot: tv and mweb clients work best with PO tokens
+            opts['extractor_args'] = {'youtube': {'player_client': ['tv', 'mweb', 'web']}}
 
-        cookies_browser = os.environ.get('YOUTUBE_COOKIES_FROM_BROWSER')
-        if cookies_browser:
-            opts['cookiesfrombrowser'] = (cookies_browser,)
-            print(f"[YouTubeService] Usando cookies del navegador: {cookies_browser}")
+        # Allow disabling cookies via env var. When using bgutil-pot (PO Token provider),
+        # cookies can actually hurt: yt-dlp requires data_sync_id for authenticated GVS
+        # PO Tokens, which is awkward to extract. bgutil-pot alone (anonymous mode)
+        # often works better.
+        disable_cookies = os.environ.get('YOUTUBE_DISABLE_COOKIES', '').lower() in ('1', 'true', 'yes')
+
+        if not disable_cookies:
+            cookies_path = YouTubeService._get_writable_cookies_path()
+            if cookies_path:
+                opts['cookiefile'] = cookies_path
+                print(f"[YouTubeService] Usando cookies desde archivo: {cookies_path}")
+
+            cookies_browser = os.environ.get('YOUTUBE_COOKIES_FROM_BROWSER')
+            if cookies_browser:
+                opts['cookiesfrombrowser'] = (cookies_browser,)
+                print(f"[YouTubeService] Usando cookies del navegador: {cookies_browser}")
+        else:
+            print("[YouTubeService] Cookies deshabilitadas (YOUTUBE_DISABLE_COOKIES=1), usando solo bgutil-pot")
 
         return opts
 
