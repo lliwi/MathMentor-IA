@@ -138,6 +138,67 @@ def dashboard():
                          source_type_filter=source_type_filter)
 
 
+@teacher_bp.route('/topic/<int:topic_id>/delete', methods=['POST'])
+@teacher_required
+def delete_topic(topic_id):
+    """
+    Delete a topic and all related data.
+
+    Cascades:
+    - Exercise (cascade='all, delete-orphan' on Topic.exercises) →
+      Submission, ExerciseUsage (cascade on Exercise)
+    - Summary (no ORM cascade from Topic side, so deleted manually) →
+      SummaryUsage (cascade on Summary)
+    - StudentProfile.topics_assigned (JSON string) is cleaned to drop
+      references to the deleted topic so the student UI doesn't point
+      to a stale id.
+    """
+    from app.models.student_profile import StudentProfile
+
+    try:
+        topic = Topic.query.get_or_404(topic_id)
+        topic_name = topic.topic_name
+
+        # Count related records for the confirmation message
+        exercises_count = Exercise.query.filter_by(topic_id=topic_id).count()
+        summaries_count = Summary.query.filter_by(topic_id=topic_id).count()
+
+        # Summaries don't cascade from the Topic side — delete them first
+        Summary.query.filter_by(topic_id=topic_id).delete(synchronize_session=False)
+
+        # Delete the topic; SQLAlchemy cascades to Exercise → Submission/ExerciseUsage
+        db.session.delete(topic)
+
+        # Remove stale references from student profile assignments
+        profiles = StudentProfile.query.filter(
+            StudentProfile.topics_assigned.isnot(None)
+        ).all()
+        for profile in profiles:
+            assigned = profile.get_topics()
+            if topic_id in assigned:
+                profile.set_topics([tid for tid in assigned if tid != topic_id])
+
+        db.session.commit()
+
+        message = f'Tema "{topic_name}" eliminado correctamente'
+        details = []
+        if exercises_count:
+            details.append(f'{exercises_count} ejercicios')
+        if summaries_count:
+            details.append(f'{summaries_count} resúmenes')
+        if details:
+            message += f' (incluyendo {", ".join(details)})'
+
+        return jsonify({'success': True, 'message': message})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error al eliminar el tema: {str(e)}'
+        }), 500
+
+
 @teacher_bp.route('/exercises')
 @teacher_required
 def exercises():

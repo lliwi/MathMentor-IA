@@ -226,10 +226,19 @@
                                     <span class="text-muted">N/A</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <a href="{{ url_for('teacher.exercises', topic=stat.topic.id) }}" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-eye"></i> Ver ejercicios
-                                </a>
+                            <td class="text-nowrap" style="min-width: 260px;">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('teacher.exercises', topic=stat.topic.id) }}" class="btn btn-sm btn-primary text-nowrap">
+                                        <i class="bi bi-eye"></i> Ver ejercicios
+                                    </a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-danger btn-delete-topic text-nowrap"
+                                            data-topic-id="{{ stat.topic.id }}"
+                                            data-topic-name="{{ stat.topic.topic_name }}"
+                                            data-exercises-count="{{ stat.total }}">
+                                        <i class="bi bi-trash"></i> Eliminar
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -280,4 +289,87 @@
         </div>
     </div>
 </div>
+
+<!-- Delete topic confirmation modal -->
+<div class="modal fade" id="deleteTopicModal" tabindex="-1" aria-labelledby="deleteTopicModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteTopicModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que quieres eliminar el tema <strong id="deleteTopicName"></strong>?</p>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Se eliminarán también <strong id="deleteTopicExercises">0</strong> ejercicios asociados,
+                    sus resúmenes, entregas de estudiantes y registros de uso. <strong>Esta acción no se puede deshacer.</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteTopicBtn">
+                    <i class="bi bi-trash"></i> Eliminar definitivamente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    let topicIdToDelete = null;
+    const modalEl = document.getElementById('deleteTopicModal');
+    const modal = new bootstrap.Modal(modalEl);
+    const nameSpan = document.getElementById('deleteTopicName');
+    const exercisesSpan = document.getElementById('deleteTopicExercises');
+    const confirmBtn = document.getElementById('confirmDeleteTopicBtn');
+
+    document.querySelectorAll('.btn-delete-topic').forEach(btn => {
+        btn.addEventListener('click', function() {
+            topicIdToDelete = this.dataset.topicId;
+            nameSpan.textContent = this.dataset.topicName;
+            exercisesSpan.textContent = this.dataset.exercisesCount;
+            modal.show();
+        });
+    });
+
+    confirmBtn.addEventListener('click', async function() {
+        if (!topicIdToDelete) return;
+
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Eliminando...';
+
+        try {
+            const response = await fetch(`/teacher/topic/${topicIdToDelete}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                modal.hide();
+                // Reload to refresh statistics
+                window.location.reload();
+            } else {
+                alert('Error: ' + (result.message || 'No se pudo eliminar el tema'));
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="bi bi-trash"></i> Eliminar definitivamente';
+            }
+        } catch (err) {
+            alert('Error de red: ' + err.message);
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-trash"></i> Eliminar definitivamente';
+        }
+    });
+})();
+</script>
 {% endblock %}
