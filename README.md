@@ -32,7 +32,7 @@
 1. **Clonar el repositorio:**
 ```bash
 git clone <repository-url>
-cd "MathMentor IA"
+cd nomasceros.es
 ```
 
 2. **Configurar variables de entorno:**
@@ -61,6 +61,66 @@ Este paso es **altamente recomendado** para optimizar la performance de búsqued
 
 5. **Acceder a la aplicación:**
 - Abrir navegador en: http://localhost:5000
+
+### Modos de Inicio: Desarrollo y Producción
+
+El script `start.sh` levanta todo el stack (base de datos, Redis, web y el juego
+**Legend of Maths**), espera a que la BD esté lista, aplica las migraciones y verifica
+el esquema. Tiene dos modos:
+
+| | **Desarrollo** (`--dev`, por defecto) | **Producción** (`--prod`) |
+|---|---|---|
+| Ficheros compose | `docker-compose.yml` + override del juego | `docker-compose.prod.yml` |
+| Proxy inverso | ❌ (acceso directo por puerto) | ✅ nginx (:80/:443) + certbot (SSL) |
+| Web / landing | http://localhost:5000 | https://nomasceros.es/ |
+| Juego (Legend) | http://localhost:5055/legend | https://nomasceros.es/legend |
+| Debug Flask | activado | desactivado |
+
+Ambos modos comparten el mismo proyecto Docker (`mathmentoria`) y, por tanto, los
+**mismos volúmenes de datos** (la BD persiste entre dev y prod). No se pueden ejecutar
+a la vez (usan los mismos puertos/contenedores).
+
+**Opciones** (combinables con el modo):
+- `--build` — reconstruye las imágenes antes de iniciar.
+- `--init-db` — ejecuta `init_db.py` tras las migraciones (crea usuarios de prueba).
+
+#### Poner en marcha en Desarrollo
+
+```bash
+./start.sh                 # equivalente a ./start.sh --dev
+# Primera vez o tras cambios en el Dockerfile/deps:
+./start.sh --dev --build
+# Instalación limpia con usuarios de prueba:
+./start.sh --dev --init-db
+```
+
+Al terminar tendrás:
+- **Web / landing:** http://localhost:5000
+- **Juego Legend of Maths:** http://localhost:5055/legend
+  (o pulsa el botón **"Modo Legend"** en la barra de la landing)
+
+#### Poner en marcha en Producción
+
+Requisitos: el dominio (`nomasceros.es`) apuntando al servidor y los puertos 80/443
+abiertos.
+
+```bash
+# 1) (solo la PRIMERA vez) obtener el certificado SSL de Let's Encrypt
+./init-letsencrypt.sh
+
+# 2) arrancar el stack de producción (nginx + certbot + web + juego)
+./start.sh --prod
+```
+
+nginx enruta `/legend` y `/api/game/*` al conector del juego, y el resto a la web.
+`certbot` renueva el certificado automáticamente. Al terminar:
+- **Web:** https://nomasceros.es/
+- **Juego:** https://nomasceros.es/legend
+
+> **Sobre Legend of Maths:** es una interfaz gamificada (2D, estilo Zelda) construida
+> sobre esta misma aplicación. Reutiliza sus ejercicios, corrección, puntuación y
+> usuarios a través de un conector; el código vive en la carpeta `Legend off maths/`.
+> Ver `Legend off maths/README.md` para más detalles.
 
 ### 🚀 Performance Optimizations
 
@@ -445,7 +505,7 @@ Ejercicio/Pista ← AI Engine ← Contexto recuperado ← retrieve_context()
 ### Estructura del Proyecto
 
 ```
-MathMentor IA/
+nomasceros.es/
 ├── app/
 │   ├── __init__.py           # Application factory
 │   ├── admin/                # Admin blueprint
@@ -456,9 +516,17 @@ MathMentor IA/
 │   ├── services/             # Business logic services
 │   ├── static/               # CSS, JS
 │   └── templates/            # HTML templates
+├── Legend off maths/         # Juego "Legend of Maths" (interfaz gamificada)
+│   ├── connector/            # Conector Flask (API JSON sobre MathMentor)
+│   ├── game/                 # Cliente Phaser 3 (mundo, UI, sprites)
+│   └── docker-compose.legend.yml  # Override del juego para modo dev
+├── nginx/                    # Configuración de nginx (modo producción)
 ├── app.py                    # Application entry point
 ├── init_db.py                # Database initialization script
-├── docker-compose.yml        # Docker services
+├── start.sh                  # Arranque dev/prod (ver "Modos de Inicio")
+├── docker-compose.yml        # Servicios Docker (desarrollo)
+├── docker-compose.prod.yml   # Servicios Docker (producción: nginx + certbot)
+├── init-letsencrypt.sh       # Emisión inicial del certificado SSL
 ├── Dockerfile                # Docker image
 ├── requirements.txt          # Python dependencies
 └── .env.example              # Environment variables template
