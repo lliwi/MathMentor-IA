@@ -71,35 +71,35 @@ db_query() {
 }
 
 echo "==> Comprobando estado de migraciones..."
-# ¿Existe la tabla alembic_version y tiene una versión registrada?
+# ¿Existe la tabla alembic_version y tiene una revisión registrada?
 VERSION_COUNT=0
 if [ -n "$(db_query "SELECT to_regclass('public.alembic_version');")" ]; then
     VERSION_COUNT=$(db_query "SELECT count(*) FROM alembic_version;")
 fi
-# ¿Hay tablas de la aplicación ya creadas (por la auto-inicialización)?
-APP_TABLES=$(db_query "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name <> 'alembic_version';")
 
 if [ "${VERSION_COUNT:-0}" -ge 1 ]; then
+    # BD ya bajo control de Alembic: aplica las migraciones pendientes.
     echo "==> Aplicando migraciones pendientes (flask db upgrade)..."
     $COMPOSE exec -T web flask db upgrade
-elif [ "${APP_TABLES:-0}" -ge 1 ]; then
-    # El esquema ya existe (creado por create_all) pero sin sello de Alembic.
-    # Lo adoptamos como base con 'stamp head' para evitar el error
-    # "relation already exists" en futuras migraciones.
-    echo "==> Esquema existente sin sello de Alembic; ejecutando 'flask db stamp head'..."
-    $COMPOSE exec -T web flask db stamp head
 else
-    echo "==> Base de datos vacía; creando esquema con migraciones (flask db upgrade)..."
-    $COMPOSE exec -T web flask db upgrade
+    # Sin sello de Alembic: instalación limpia O BD creada por create_all.
+    # La app construye el esquema actual COMPLETO con create_all en su primer
+    # arranque (auto-inicialización), por lo que NO ejecutamos migraciones desde
+    # cero: darían "relation already exists". Adoptamos el esquema como baseline.
+    # 'stamp head' no ejecuta DDL, así que es seguro incluso en BD vacía.
+    echo "==> Sin sello de Alembic; adoptando el esquema actual (flask db stamp head)..."
+    $COMPOSE exec -T web flask db stamp head
 fi
 
-# Red de seguridad: crea cualquier tabla presente en los modelos pero ausente en
-# la BD (p.ej. tablas de funciones nuevas cuando Alembic quedó sellado sin aplicar
-# la migración, o una BD adoptada con 'stamp head'). create_all es idempotente:
-# solo crea tablas que faltan, nunca altera ni borra las existentes. Va DESPUÉS
-# del upgrade para no colisionar nunca con un CREATE TABLE de una migración.
-echo "==> Verificando tablas del modelo (create_all idempotente)..."
-$COMPOSE exec -T web python -c "from app import create_app, db; import app.models; app = create_app(); app.app_context().push(); db.create_all(); print('Tablas del modelo verificadas')"
+# Red de seguridad + inicialización: create_all es idempotente (solo crea las
+# tablas que faltan, nunca altera ni borra las existentes). Cubre dos casos:
+#  - Instalación limpia: al construir la app (create_app) se dispara la
+#    auto-inicialización, que crea las tablas y siembra el usuario admin.
+#  - BD existente a la que le falta alguna tabla de una función nueva
+#    (p.ej. 'documents'): la crea sin tocar el resto.
+# Va DESPUÉS del upgrade para no colisionar nunca con un CREATE TABLE de una migración.
+echo "==> Verificando esquema (create_all idempotente)..."
+$COMPOSE exec -T web python -c "from app import create_app, db; import app.models; app = create_app(); app.app_context().push(); db.create_all(); print('Esquema verificado')"
 
 if [ "$INIT_DB" = true ]; then
     echo "==> Inicializando base de datos con usuarios de prueba..."
