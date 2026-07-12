@@ -67,3 +67,6 @@ htmlcov/
 
 # Migrations
 migrations/versions/*.pyc
+
+#clude
+.claude/

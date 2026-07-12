@@ -44,7 +44,7 @@ function escalateDifficulty(base, tier) {
   return DIFF_ORDER[i];
 }
 // Velocidad de persecución (sube con el progreso).
-function chaseSpeed(base, tier) { return Math.min(150, base + tier * 14); }
+function chaseSpeed(base, tier) { return Math.min(210, base + tier * 16); }
 
 // Rejilla de pupitres para las aulas.
 function deskGrid(x0, y0, cols, rows, dx, dy) {
@@ -64,7 +64,8 @@ const ROOMS = {
       ...deskGrid(4, 5, 4, 3, 4, 3),
     ],
     enemies: [
-      { t: 'teacher', tx: 10, ty: 3, difficulty: 'easy', base: 40, name: 'Profesor' },
+      { t: 'teacher', tx: 10, ty: 3, difficulty: 'easy', base: 65, name: 'Profesor' },
+      { t: 'student', tx: 16, ty: 8, difficulty: 'easy', base: 80, name: 'Repetidor' },
     ],
     npcs: [{ t: 'nerd', tx: 2, ty: 11 }],
     doors: [{ id: 'to_pasillo', tx: 10, ty: 13, to: 'pasillo', toDoor: 'to_aula', label: 'Pasillo ▼' }],
@@ -84,7 +85,9 @@ const ROOMS = {
       { t: 'plant', tx: 12, ty: 1.4 },
     ],
     enemies: [
-      { t: 'bully', tx: 12, ty: 5, difficulty: 'medium', base: 55, name: 'El Abusón' },
+      { t: 'bully', tx: 12, ty: 5, difficulty: 'medium', base: 85, name: 'El Abusón' },
+      { t: 'teacher', tx: 5, ty: 3, difficulty: 'medium', base: 70, name: 'Profe de guardia' },
+      { t: 'student', tx: 19, ty: 5, difficulty: 'medium', base: 80, name: 'Repetidor' },
     ],
     npcs: [],
     doors: [
@@ -107,8 +110,10 @@ const ROOMS = {
       { t: 'hoop', tx: 18, ty: 12 }, { t: 'bench', tx: 8, ty: 14 }, { t: 'bench', tx: 13, ty: 14 },
     ],
     enemies: [
-      { t: 'bully', tx: 7, ty: 6, difficulty: 'medium', base: 60, name: 'El Abusón' },
-      { t: 'student', tx: 15, ty: 8, difficulty: 'medium', base: 55, name: 'Repetidor' },
+      { t: 'bully', tx: 7, ty: 6, difficulty: 'medium', base: 90, name: 'El Abusón' },
+      { t: 'student', tx: 15, ty: 8, difficulty: 'medium', base: 80, name: 'Repetidor' },
+      { t: 'bully', tx: 11, ty: 12, difficulty: 'medium', base: 85, name: 'Matón' },
+      { t: 'teacher', tx: 18, ty: 4, difficulty: 'medium', base: 72, name: 'Profe de guardia' },
     ],
     npcs: [{ t: 'nerd', tx: 11, ty: 3 }],
     doors: [{ id: 'to_pasillo', tx: 0, ty: 8, to: 'pasillo', toDoor: 'to_patio', label: '◀ Pasillo' }],
@@ -128,7 +133,9 @@ const ROOMS = {
       { t: 'desk', tx: 7, ty: 4 },
     ],
     enemies: [
-      { t: 'director', tx: 7, ty: 3, difficulty: 'hard', base: 70, boss: true, name: 'Dirección' },
+      { t: 'director', tx: 7, ty: 3, difficulty: 'hard', base: 105, boss: true, name: 'Dirección' },
+      { t: 'teacher', tx: 3, ty: 5, difficulty: 'hard', base: 80, name: 'Jefe de estudios' },
+      { t: 'teacher', tx: 11, ty: 5, difficulty: 'hard', base: 80, name: 'Secretaría' },
     ],
     npcs: [],
     doors: [{ id: 'to_pasillo', tx: 13, ty: 5, to: 'pasillo', toDoor: 'to_despacho', label: 'Pasillo ▶' }],
