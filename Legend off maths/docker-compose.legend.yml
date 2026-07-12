@@ -1,0 +1,38 @@
+# Override para levantar el conector "Legend of Maths" junto al stack de MathMentor,
+# sin modificar el docker-compose.yml original.
+#
+# Uso (desde la raíz del proyecto nomasceros.es):
+#   docker compose -f docker-compose.yml -f "Legend off maths/docker-compose.legend.yml" up -d legend
+#   → Juego en http://localhost:5055/legend
+#
+# Reutiliza la misma imagen (mismas dependencias), la misma red (db/redis) y el mismo
+# .env que MathMentor. Monta el repositorio completo en /legend para que el conector
+# pueda importar el paquete `app` de MathMentor sin copiarlo.
+#
+# NOTA: las rutas relativas se resuelven respecto al directorio del proyecto (la raíz del
+# repo, donde está docker-compose.yml), NO respecto a este archivo.
+services:
+  legend:
+    build: .
+    container_name: legend_of_maths
+    working_dir: /legend
+    command: python "/legend/Legend off maths/connector/run.py"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://mathmentor_user:mathmentor_password@db:5432/mathmentor
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - LEGEND_PORT=5055
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5055:5055"
+    volumes:
+      - .:/legend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

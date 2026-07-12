@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legend of Maths</title>
+  <link rel="stylesheet" href="/legend/css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+  <div id="stage">
+    <div id="game-container"></div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <span id="hud-user">—</span>
+      <span class="hud-item">⭐ <b id="hud-points">0</b> pts</span>
+      <span class="hud-item">🔥 <b id="hud-streak">0</b></span>
+      <span class="hud-hint">Flechas/WASD para moverte · toca a un adversario</span>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="login-overlay" class="overlay">
+      <div class="panel">
+        <h1>⚔️ Legend of Maths</h1>
+        <p class="subtitle">Sobrevive al instituto resolviendo matemáticas</p>
+        <input id="login-user" type="text" placeholder="Usuario" autocomplete="username">
+        <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
+        <button id="login-btn" class="btn primary">Entrar</button>
+        <p id="login-error" class="error"></p>
+        <p class="tiny">Usa tu cuenta de estudiante de MathMentor IA.</p>
+      </div>
+    </div>
+
+    <!-- BATALLA / EJERCICIO -->
+    <div id="battle-overlay" class="overlay hidden">
+      <div class="panel wide">
+        <div class="battle-head">
+          <h2 id="battle-title">Encuentro</h2>
+          <span id="battle-diff" class="badge">—</span>
+        </div>
+        <div id="battle-loading" class="loading">Generando ejercicio…</div>
+
+        <div id="battle-body" class="hidden">
+          <div id="battle-content" class="exercise-content"></div>
+
+          <label class="field-label">Tu respuesta</label>
+          <textarea id="battle-answer" rows="2" placeholder="Escribe el resultado…"></textarea>
+
+          <div id="battle-procedures-wrap">
+            <label class="field-label">Procedimientos que usarías</label>
+            <div id="battle-procedures" class="procedures"></div>
+          </div>
+
+          <div id="battle-hint" class="hint-box hidden"></div>
+          <div id="battle-feedback" class="feedback hidden"></div>
+
+          <div class="battle-actions">
+            <button id="battle-hint-btn" class="btn ghost">💡 Pista (5 pts)</button>
+            <button id="battle-submit-btn" class="btn primary">Responder</button>
+            <button id="battle-continue-btn" class="btn success hidden">Continuar ▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIENDA DEL EMPOLLÓN -->
+    <div id="shop-overlay" class="overlay hidden">
+      <div class="panel wide">
+        <div class="battle-head">
+          <h2>🤓 El empollón</h2>
+          <span class="badge">⭐ <b id="shop-points">0</b> pts</span>
+        </div>
+        <p class="subtitle">Compra resúmenes de tus temas (15 pts cada uno)</p>
+        <div id="shop-topics" class="shop-topics"></div>
+        <div id="shop-summary" class="summary-box hidden"></div>
+        <div class="battle-actions">
+          <button id="shop-close-btn" class="btn ghost">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="/legend/js/api.js"></script>
+  <script src="/legend/js/ui.js"></script>
+  <script src="/legend/js/world.js"></script>
+  <script src="/legend/js/main.js"></script>
+</body>
+</html>
