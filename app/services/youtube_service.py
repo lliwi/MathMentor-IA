@@ -89,7 +89,10 @@ class YouTubeService:
     @staticmethod
     def get_channel_videos(channel_url: str, limit: Optional[int] = None) -> List[Dict]:
         """
-        Get list of videos from a YouTube channel (optimized version)
+        Get list of videos from a YouTube channel.
+
+        Uses yt-dlp (flat extraction) as the primary method because it is far more
+        reliable than pytubefix for channel enumeration, with pytubefix as fallback.
 
         Args:
             channel_url: URL of the YouTube channel
@@ -99,95 +102,109 @@ class YouTubeService:
             List of dicts with video information
         """
         try:
-            # Normalize URL to channel/ID format
             normalized_url = YouTubeService.normalize_channel_url(channel_url)
 
-            print(f"[YouTubeService] Obteniendo lista de videos del canal (optimizado)...")
-            channel = Channel(normalized_url)
-            videos = []
+            # Primary: yt-dlp flat listing (fast + reliable)
+            videos = YouTubeService._get_channel_videos_ytdlp(normalized_url, limit)
+            if videos:
+                return videos
 
-            # Get video objects (pytubefix 10.x returns YouTube objects, not URLs)
-            # This is fast - just gets the video IDs
-            video_objects = list(channel.videos)
-            print(f"[YouTubeService] Encontrados {len(video_objects)} videos en el canal")
-
-            # Apply limit if specified
-            if limit:
-                video_objects = video_objects[:limit]
-
-            # Extract metadata for each video - OPTIMIZED to skip unavailable videos fast
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-
-            error_samples = []
-
-            def get_video_info(yt):
-                # Always try to get at least the video_id so the item is usable
-                try:
-                    video_id = yt.video_id
-                except Exception as e:
-                    if len(error_samples) < 3:
-                        error_samples.append(f"video_id failed: {type(e).__name__}: {e}")
-                    return None
-
-                video_url = f'https://www.youtube.com/watch?v={video_id}'
-                title = None
-                duration = 0
-                published_at = None
-
-                try:
-                    title = yt.title
-                except Exception as e:
-                    if len(error_samples) < 3:
-                        error_samples.append(f"title failed for {video_id}: {type(e).__name__}: {e}")
-                    # Fallback: YouTube oEmbed public endpoint (no auth, no bot detection)
-                    try:
-                        import requests
-                        r = requests.get(
-                            'https://www.youtube.com/oembed',
-                            params={'url': video_url, 'format': 'json'},
-                            timeout=5,
-                        )
-                        if r.status_code == 200:
-                            title = r.json().get('title')
-                    except Exception:
-                        pass
-
-                try:
-                    duration = getattr(yt, 'length', 0) or 0
-                except Exception:
-                    pass
-
-                try:
-                    published_at = getattr(yt, 'publish_date', None)
-                except Exception:
-                    pass
-
-                return {
-                    'video_id': video_id,
-                    'title': title or f'Video {video_id}',
-                    'url': video_url,
-                    'duration': duration,
-                    'published_at': published_at,
-                }
-
-            # Process videos in parallel for speed (max 10 threads)
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                futures = {executor.submit(get_video_info, yt): yt for yt in video_objects}
-
-                for future in as_completed(futures):
-                    result = future.result()
-                    if result:
-                        videos.append(result)
-
-            print(f"[YouTubeService] Cargados {len(videos)} videos válidos de {len(video_objects)} totales")
-            if error_samples:
-                print(f"[YouTubeService] Errores de metadatos (primeros {len(error_samples)}):")
-                for err in error_samples:
-                    print(f"  - {err}")
-            return videos
+            # Fallback: pytubefix (kept for resilience)
+            print("[YouTubeService] yt-dlp no devolvió videos, intentando pytubefix...")
+            return YouTubeService._get_channel_videos_pytubefix(normalized_url, limit)
 
         except Exception as e:
             raise Exception(f"Error al obtener videos del canal: {str(e)}")
+
+    @staticmethod
+    def _get_channel_videos_ytdlp(channel_url: str, limit: Optional[int] = None) -> List[Dict]:
+        """List channel videos using yt-dlp flat extraction."""
+        try:
+            import yt_dlp
+
+            # Point to the channel's "videos" tab for a clean video listing
+            list_url = channel_url.rstrip('/')
+            if not list_url.endswith('/videos'):
+                list_url += '/videos'
+
+            ydl_opts = {
+                **YouTubeService._get_ytdlp_base_opts(),
+                'extract_flat': 'in_playlist',  # don't resolve each video (fast)
+                'skip_download': True,
+            }
+            if limit:
+                ydl_opts['playlistend'] = limit
+
+            print(f"[YouTubeService] Listando videos del canal con yt-dlp: {list_url}")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(list_url, download=False)
+
+            # Flatten entries (a channel may return nested tabs/playlists)
+            def iter_entries(node):
+                for entry in (node.get('entries') or []):
+                    if not entry:
+                        continue
+                    if entry.get('entries'):
+                        yield from iter_entries(entry)
+                    else:
+                        yield entry
+
+            videos = []
+            for e in iter_entries(info or {}):
+                vid = e.get('id')
+                if not vid:
+                    continue
+                try:
+                    duration = int(e.get('duration') or 0)
+                except (TypeError, ValueError):
+                    duration = 0
+                videos.append({
+                    'video_id': vid,
+                    'title': e.get('title') or f'Video {vid}',
+                    'url': e.get('url') or f'https://www.youtube.com/watch?v={vid}',
+                    'duration': duration,
+                    'published_at': None,  # not available in flat mode
+                })
+                if limit and len(videos) >= limit:
+                    break
+
+            print(f"[YouTubeService] yt-dlp: {len(videos)} videos encontrados en el canal")
+            return videos
+
+        except Exception as e:
+            print(f"[YouTubeService] yt-dlp falló al listar el canal: {type(e).__name__}: {e}")
+            return []
+
+    @staticmethod
+    def _get_channel_videos_pytubefix(channel_url: str, limit: Optional[int] = None) -> List[Dict]:
+        """Fallback channel listing using pytubefix."""
+        print(f"[YouTubeService] Obteniendo lista de videos del canal (pytubefix)...")
+        channel = Channel(channel_url)
+        video_objects = list(channel.videos)
+        if limit:
+            video_objects = video_objects[:limit]
+
+        videos = []
+        for yt in video_objects:
+            try:
+                video_id = yt.video_id
+            except Exception:
+                continue
+            video_url = f'https://www.youtube.com/watch?v={video_id}'
+            try:
+                title = yt.title
+            except Exception:
+                title = None
+            videos.append({
+                'video_id': video_id,
+                'title': title or f'Video {video_id}',
+                'url': video_url,
+                'duration': getattr(yt, 'length', 0) or 0,
+                'published_at': getattr(yt, 'publish_date', None),
+            })
+
+        print(f"[YouTubeService] pytubefix: {len(videos)} videos válidos")
+        return videos
 
     @staticmethod
     def _download_audio(video_url: str) -> Optional[str]:
