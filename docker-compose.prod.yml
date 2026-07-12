@@ -1,0 +1,151 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: mathmentor_db
+    restart: always
+    environment:
+      POSTGRES_DB: mathmentor
+      POSTGRES_USER: mathmentor_user
+      POSTGRES_PASSWORD: mathmentor_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathmentor_user -d mathmentor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mathmentor_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: mathmentor_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mathmentor_network
+
+  # YouTube PO Token provider (sidecar service)
+  # Generates Proof-of-Origin tokens required by YouTube to bypass bot detection
+  # from datacenter IPs. Used by yt-dlp via the bgutil-ytdlp-pot-provider plugin.
+  bgutil-pot:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: mathmentor_bgutil_pot
+    restart: always
+    networks:
+      - mathmentor_network
+
+  web:
+    build: .
+    container_name: mathmentor_web
+    restart: always
+    command: flask run --host=0.0.0.0
+    env_file:
+      - .env
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://mathmentor_user:mathmentor_password@db:5432/mathmentor
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - PYTHONUNBUFFERED=1
+      # PO Token provider for yt-dlp (bypasses YouTube bot detection on datacenters)
+      - getpot_bgutil_baseurl=http://bgutil-pot:4416
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./app:/app/app
+      - ./uploads:/app/uploads
+      - ./migrations:/app/migrations
+      - ./cookies.txt:/app/cookies.txt
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      bgutil-pot:
+        condition: service_started
+    networks:
+      - mathmentor_network
+
+  # Conector del juego "Legend of Maths" (nueva interfaz gamificada sobre MathMentor).
+  # Reutiliza la misma imagen y BBDD; expone /legend y /api/game en el puerto 5055.
+  # Nginx lo enruta internamente (no se publica su puerto al exterior).
+  legend:
+    build: .
+    container_name: mathmentor_legend
+    restart: always
+    working_dir: /legend
+    command: python "/legend/Legend off maths/connector/run.py"
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://mathmentor_user:mathmentor_password@db:5432/mathmentor
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - LEGEND_PORT=5055
+      - PYTHONUNBUFFERED=1
+      - getpot_bgutil_baseurl=http://bgutil-pot:4416
+    volumes:
+      - .:/legend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - mathmentor_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: mathmentor_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./nginx/ssl-params.conf:/etc/nginx/ssl-params.conf:ro
+    depends_on:
+      - web
+      - legend
+    networks:
+      - mathmentor_network
+    restart: always
+
+  certbot:
+    image: certbot/certbot
+    container_name: mathmentor_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - mathmentor_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  mathmentor_network:
+    driver: bridge

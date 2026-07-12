@@ -48,7 +48,9 @@ app = build_app()
 
 if __name__ == '__main__':
     port = int(os.getenv('LEGEND_PORT', '5055'))
+    # En producción (FLASK_ENV=production) no se activa el modo debug.
+    debug = os.getenv('FLASK_ENV', 'development') != 'production'
     print(f"\n🎮 Legend of Maths conectado a MathMentor IA")
     print(f"   Juego:  http://localhost:{port}/legend")
     print(f"   API:    http://localhost:{port}/api/game/*\n")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=debug)
