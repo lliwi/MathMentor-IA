@@ -5,7 +5,7 @@ import os
 import json
 import requests
 from typing import Dict, Any
-from app.ai_engines.base import AIEngine
+from app.ai_engines.base import AIEngine, LATEX_INSTRUCTIONS, LATEX_JSON_NOTE
 from app.services.cache_service import cache_service
 
 
@@ -81,7 +81,8 @@ IMPORTANTE: Cada procedimiento debe tener "description" que explique qué es.
 IMPORTANTE: En el enunciado, cuando el problema involucre magnitudes físicas (longitud, peso, tiempo, velocidad, área, volumen, etc.), SIEMPRE especifica claramente: "Indica las unidades en tu respuesta" o "Expresa el resultado con sus unidades correspondientes"
 IMPORTANTE: Usa emoticonos apropiados para hacer el ejercicio más divertido y motivador
   Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲
-CRÍTICO: Genera un ejercicio ÚNICO y ORIGINAL. Varía la temática contextual (diferentes situaciones de la vida real, diferentes enfoques del problema). Usa valores numéricos completamente diferentes. NO repitas ejercicios similares a los ya generados."""
+CRÍTICO: Genera un ejercicio ÚNICO y ORIGINAL. Varía la temática contextual (diferentes situaciones de la vida real, diferentes enfoques del problema). Usa valores numéricos completamente diferentes. NO repitas ejercicios similares a los ya generados.
+{LATEX_INSTRUCTIONS}{LATEX_JSON_NOTE}"""
 
         response = self._call_generate(prompt, temperature=0.8)
 
@@ -137,7 +138,8 @@ Errores: {', '.join(errors)}
 
 IMPORTANTE: Compara con la SOLUCIÓN CORRECTA únicamente. NO recalcules. Explica errores basándote en la diferencia con la solución correcta.
 IMPORTANTE: Usa emoticonos apropiados para hacer el feedback más amigable y motivador
-  Ejemplos: 💡 🤔 ✨ 📝 👀 ⚠️ 💪 🎯 ⭐ 🚀 ✅ 📚"""
+  Ejemplos: 💡 🤔 ✨ 📝 👀 ⚠️ 💪 🎯 ⭐ 🚀 ✅ 📚
+{LATEX_INSTRUCTIONS}"""
 
         return self._call_generate(prompt, temperature=0.5)
 
@@ -152,7 +154,8 @@ INSTRUCCIONES:
 - Proporciona una pista orientadora, no resuelvas el problema
 - Mantén la pista breve y concisa
 - IMPORTANTE: Usa emoticonos apropiados para hacer la pista más amigable y motivadora
-  Ejemplos: 💡 🤔 🎯 👀 ✨ 🔍 💭 🌟 📌 🔑"""
+  Ejemplos: 💡 🤔 🎯 👀 ✨ 🔍 💭 🌟 📌 🔑
+{LATEX_INSTRUCTIONS}"""
         return self._call_generate(prompt, temperature=0.7)
 
     def extract_topics(self, text_chunks: list, book_metadata: Dict[str, str]) -> list:
@@ -227,6 +230,7 @@ El resumen debe:
 - Estar basado en el contenido del libro proporcionado
 - IMPORTANTE: Usa emoticonos apropiados para hacer el resumen más visual, amigable y motivador
   Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 📝 ✨ 🚀 📚 🔍 💭 ⚡ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲 ✅ ⚠️ 💪 👀 🌟 📌 🔑
+{LATEX_INSTRUCTIONS}
 
 Formato del resumen: Markdown con secciones bien diferenciadas."""
 

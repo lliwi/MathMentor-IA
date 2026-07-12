@@ -6,7 +6,7 @@ import json
 import time
 from typing import Dict, Any
 from openai import OpenAI
-from app.ai_engines.base import AIEngine
+from app.ai_engines.base import AIEngine, LATEX_INSTRUCTIONS, LATEX_JSON_NOTE
 from app.services.cache_service import cache_service
 
 
@@ -92,7 +92,8 @@ Requisitos:
 - IMPORTANTE: En el enunciado, cuando el problema involucre magnitudes físicas (longitud, peso, tiempo, velocidad, área, volumen, etc.), SIEMPRE especifica claramente: "Indica las unidades en tu respuesta" o "Expresa el resultado con sus unidades correspondientes"
 - IMPORTANTE: Usa emoticonos apropiados para hacer el ejercicio más divertido y motivador
   Ejemplos: 📐 📏 📊 🔢 ➕ ➖ ✖️ ➗ 🎯 💡 🤔 ⭐ 🎨 📈 📉 🔺 🔻 ⚖️ 🎲
-- CRÍTICO: Genera un ejercicio ÚNICO y ORIGINAL. Varía la temática contextual (diferentes situaciones de la vida real, diferentes enfoques del problema). Usa valores numéricos completamente diferentes. NO repitas ejercicios similares a los ya generados."""
+- CRÍTICO: Genera un ejercicio ÚNICO y ORIGINAL. Varía la temática contextual (diferentes situaciones de la vida real, diferentes enfoques del problema). Usa valores numéricos completamente diferentes. NO repitas ejercicios similares a los ya generados.
+{LATEX_INSTRUCTIONS}{LATEX_JSON_NOTE}"""
 
         messages = [
             {"role": "system", "content": "Eres un profesor de matemáticas experto en crear ejercicios didácticos."},
@@ -223,7 +224,8 @@ Genera retroalimentación que:
 4. Use un tono motivador y educativo
 5. Sea concisa pero completa (máximo 200 palabras)
 6. IMPORTANTE: Incluye emoticonos apropiados para hacer el feedback más divertido y motivador
-   Ejemplos: 💡 🤔 ✨ 📝 👀 ⚠️ 💪 🎯 ✅ 📐 🔍 💭 🌟"""
+   Ejemplos: 💡 🤔 ✨ 📝 👀 ⚠️ 💪 🎯 ✅ 📐 🔍 💭 🌟
+{LATEX_INSTRUCTIONS}"""
 
         messages = [
             {"role": "system", "content": "Eres un tutor de matemáticas paciente y didáctico. IMPORTANTE: Usa SIEMPRE la solución proporcionada como referencia única. No recalcules el problema. Usa emoticonos para hacer el feedback más amigable."},
@@ -246,7 +248,8 @@ La pista debe:
 - Ser breve (máximo 50 palabras)
 - Motivar al estudiante a pensar por sí mismo
 - IMPORTANTE: Incluye emoticonos apropiados para hacer la pista más divertida y motivadora
-  Ejemplos: 💡 🤔 🎯 👀 ✨ 🔍 💭 🌟 📝 🚀"""
+  Ejemplos: 💡 🤔 🎯 👀 ✨ 🔍 💭 🌟 📝 🚀
+{LATEX_INSTRUCTIONS}"""
 
         messages = [
             {"role": "system", "content": "Eres un tutor de matemáticas que da pistas útiles sin revelar la solución. Usa emoticonos para hacer las pistas más amigables."},
@@ -373,6 +376,7 @@ El resumen debe:
 - Estar basado en el contenido del libro proporcionado
 - IMPORTANTE: Incluye emoticonos apropiados para hacer el resumen más visual y atractivo
   Ejemplos: 📐 📊 🔢 ➕ ➖ ✖️ ➗ 💡 🎯 ⭐ ✨ 📝 🔍 💭 📈 📉 ⚖️ 🎲 🌟 💪 ✅
+{LATEX_INSTRUCTIONS}
 
 Formato del resumen: Markdown con secciones bien diferenciadas."""
 

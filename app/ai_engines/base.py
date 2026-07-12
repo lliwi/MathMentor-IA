@@ -5,6 +5,36 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any
 
 
+# Instrucciones de formato matemático reutilizables por todos los engines.
+# El frontend renderiza LaTeX con MathJax ($...$ en línea, $$...$$ en bloque),
+# por lo que la IA debe envolver TODA expresión matemática con estos delimitadores.
+LATEX_INSTRUCTIONS = """
+FORMATO MATEMÁTICO (OBLIGATORIO):
+- Escribe TODAS las fórmulas, operaciones, números con unidades y expresiones
+  matemáticas usando LaTeX entre delimitadores de dólar.
+- Usa $...$ para fórmulas en línea y $$...$$ para fórmulas destacadas en su propia línea.
+- Ejemplos de conversión:
+    √144 = 12 m        ->  $\\sqrt{144} = 12 \\text{ m}$
+    6 × 6 = 36         ->  $6 \\times 6 = 36$
+    12 / 2 = 6         ->  $12 / 2 = 6$
+    108 × 5,50 = 594 € ->  $108 \\times 5{,}50 = 594 \\text{ €}$
+    x^2 + 3x - 4       ->  $x^2 + 3x - 4$
+    1/2                ->  $\\frac{1}{2}$
+- Usa \\times para multiplicar (no la 'x'), \\div o / para dividir,
+  \\sqrt{} para raíces, \\frac{}{} para fracciones y ^ para potencias.
+- NO uses caracteres sueltos como √, ×, ² fuera de LaTeX; conviértelos a comandos LaTeX.
+- El texto normal (explicaciones) va fuera de los delimitadores; solo la matemática va dentro.
+"""
+
+# Nota adicional para prompts cuya salida es JSON: las barras invertidas de LaTeX
+# deben ir escapadas (\\) para que el JSON sea válido.
+LATEX_JSON_NOTE = (
+    "\n- IMPORTANTE (JSON válido): dentro de las cadenas del JSON, escapa cada barra "
+    "invertida de LaTeX como doble barra. Por ejemplo, escribe \\\\sqrt, \\\\frac y "
+    "\\\\times (no \\sqrt) para que el JSON se pueda parsear correctamente."
+)
+
+
 class AIEngine(ABC):
     """Abstract base class for AI engines"""
 
