@@ -83,16 +83,23 @@ if [ "${VERSION_COUNT:-0}" -ge 1 ]; then
     echo "==> Aplicando migraciones pendientes (flask db upgrade)..."
     $COMPOSE exec -T web flask db upgrade
 elif [ "${APP_TABLES:-0}" -ge 1 ]; then
-    # El esquema ya existe (creado por create_all al arrancar) pero sin sello de
-    # Alembic. Lo adoptamos como base con 'stamp head' para evitar el error
-    # "relation already exists" y luego aplicamos lo que pudiera faltar.
+    # El esquema ya existe (creado por create_all) pero sin sello de Alembic.
+    # Lo adoptamos como base con 'stamp head' para evitar el error
+    # "relation already exists" en futuras migraciones.
     echo "==> Esquema existente sin sello de Alembic; ejecutando 'flask db stamp head'..."
     $COMPOSE exec -T web flask db stamp head
-    $COMPOSE exec -T web flask db upgrade
 else
     echo "==> Base de datos vacía; creando esquema con migraciones (flask db upgrade)..."
     $COMPOSE exec -T web flask db upgrade
 fi
+
+# Red de seguridad: crea cualquier tabla presente en los modelos pero ausente en
+# la BD (p.ej. tablas de funciones nuevas cuando Alembic quedó sellado sin aplicar
+# la migración, o una BD adoptada con 'stamp head'). create_all es idempotente:
+# solo crea tablas que faltan, nunca altera ni borra las existentes. Va DESPUÉS
+# del upgrade para no colisionar nunca con un CREATE TABLE de una migración.
+echo "==> Verificando tablas del modelo (create_all idempotente)..."
+$COMPOSE exec -T web python -c "from app import create_app, db; import app.models; app = create_app(); app.app_context().push(); db.create_all(); print('Tablas del modelo verificadas')"
 
 if [ "$INIT_DB" = true ]; then
     echo "==> Inicializando base de datos con usuarios de prueba..."
