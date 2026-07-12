@@ -14,6 +14,7 @@ from app.models.document_embedding import DocumentEmbedding
 from app.models.summary import Summary
 from app.models.summary_usage import SummaryUsage
 from app.models.hint_purchase import HintPurchase
+from app.models.document import Document
 
 __all__ = [
     'User',
@@ -28,5 +29,6 @@ __all__ = [
     'DocumentEmbedding',
     'Summary',
     'SummaryUsage',
-    'HintPurchase'
+    'HintPurchase',
+    'Document'
 ]

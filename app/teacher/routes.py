@@ -2,8 +2,11 @@
 Teacher routes
 """
 import json
+import os
+import uuid
 from datetime import datetime
-from flask import render_template, redirect, url_for, flash, request, jsonify
+from werkzeug.utils import secure_filename
+from flask import render_template, redirect, url_for, flash, request, jsonify, send_file, abort, current_app
 from flask_login import login_required, current_user
 from functools import wraps
 from app.teacher import teacher_bp
@@ -14,6 +17,7 @@ from app.models.exercise_usage import ExerciseUsage
 from app.models.summary import Summary
 from app.models.summary_usage import SummaryUsage
 from app.models.student_score import StudentScore
+from app.models.document import Document
 from app.services.rag_service import RAGService
 from app.ai_engines.factory import AIEngineFactory
 
@@ -733,3 +737,141 @@ def create_summary():
             return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
     return render_template('teacher/create_summary.html', topics=topics)
+
+
+# ─────────────────────────────────────────────────────────────
+# Gestor documental (material de apoyo para admins y profesores)
+# ─────────────────────────────────────────────────────────────
+
+# Extensiones permitidas y límite de tamaño (20 MB por archivo)
+ALLOWED_DOC_EXTENSIONS = {
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'ppt', 'pptx',
+    'txt', 'md', 'zip', 'rar',
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg',
+}
+MAX_DOC_SIZE = 20 * 1024 * 1024  # 20 MB
+DOCUMENTS_FOLDER = 'uploads/documents'
+
+
+def _allowed_document(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_DOC_EXTENSIONS
+
+
+@teacher_bp.route('/documents')
+@teacher_required
+def documents():
+    """Gestor documental: lista de material subido"""
+    query = request.args.get('q', '').strip()
+    docs_query = Document.query
+    if query:
+        like = f"%{query}%"
+        docs_query = docs_query.filter(
+            db.or_(Document.title.ilike(like), Document.description.ilike(like))
+        )
+    all_docs = docs_query.order_by(Document.uploaded_at.desc()).all()
+    return render_template('teacher/documents.html', documents=all_docs, query=query)
+
+
+@teacher_bp.route('/documents/upload', methods=['POST'])
+@teacher_required
+def upload_document():
+    """Sube uno o varios archivos al gestor documental"""
+    files = request.files.getlist('files')
+    title = (request.form.get('title') or '').strip()
+    description = (request.form.get('description') or '').strip()
+    category = (request.form.get('category') or '').strip() or None
+
+    files = [f for f in files if f and f.filename]
+    if not files:
+        flash('No se seleccionó ningún archivo.', 'error')
+        return redirect(url_for('teacher.documents'))
+
+    os.makedirs(DOCUMENTS_FOLDER, exist_ok=True)
+    saved, skipped = 0, []
+
+    for f in files:
+        if not _allowed_document(f.filename):
+            skipped.append(f.filename)
+            continue
+
+        # Comprueba el tamaño sin cargar todo en memoria
+        f.seek(0, os.SEEK_END)
+        size = f.tell()
+        f.seek(0)
+        if size > MAX_DOC_SIZE:
+            skipped.append(f"{f.filename} (supera 20 MB)")
+            continue
+
+        original = secure_filename(f.filename)
+        ext = original.rsplit('.', 1)[1].lower() if '.' in original else ''
+        stored = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
+        path = os.path.join(DOCUMENTS_FOLDER, stored)
+        f.save(path)
+
+        doc = Document(
+            # Si se suben varios, el título del formulario aplica al primero;
+            # el resto usa su nombre de archivo original.
+            title=(title if (title and saved == 0) else os.path.splitext(original)[0]),
+            description=description or None,
+            original_filename=original,
+            stored_filename=stored,
+            file_path=path,
+            file_type=ext,
+            mime_type=f.mimetype,
+            file_size=size,
+            category=category,
+            uploaded_by_id=current_user.id,
+        )
+        db.session.add(doc)
+        saved += 1
+
+    db.session.commit()
+
+    if saved:
+        flash(f'{saved} archivo(s) subido(s) correctamente.', 'success')
+    if skipped:
+        flash('No se subieron: ' + ', '.join(skipped), 'warning')
+    return redirect(url_for('teacher.documents'))
+
+
+def _get_document_or_404(document_id):
+    doc = Document.query.get_or_404(document_id)
+    if not os.path.exists(doc.file_path):
+        abort(404)
+    return doc
+
+
+@teacher_bp.route('/documents/<int:document_id>/file')
+@teacher_required
+def document_file(document_id):
+    """Sirve el archivo en línea (para previsualización de imágenes/PDF)"""
+    doc = _get_document_or_404(document_id)
+    return send_file(os.path.abspath(doc.file_path),
+                     mimetype=doc.mime_type or None,
+                     download_name=doc.original_filename)
+
+
+@teacher_bp.route('/documents/<int:document_id>/download')
+@teacher_required
+def download_document(document_id):
+    """Descarga el archivo como adjunto"""
+    doc = _get_document_or_404(document_id)
+    return send_file(os.path.abspath(doc.file_path),
+                     as_attachment=True,
+                     download_name=doc.original_filename)
+
+
+@teacher_bp.route('/documents/<int:document_id>/delete', methods=['POST'])
+@teacher_required
+def delete_document(document_id):
+    """Elimina un documento (registro + archivo en disco)"""
+    doc = Document.query.get_or_404(document_id)
+    try:
+        if doc.file_path and os.path.exists(doc.file_path):
+            os.remove(doc.file_path)
+    except OSError:
+        pass  # el registro se elimina igualmente
+    db.session.delete(doc)
+    db.session.commit()
+    flash('Documento eliminado correctamente.', 'success')
+    return redirect(url_for('teacher.documents'))
