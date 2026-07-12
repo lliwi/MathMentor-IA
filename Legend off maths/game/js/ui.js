@@ -215,13 +215,11 @@ const UI = (() => {
       cont.textContent = '¡Vencido! Continuar ▶';
       cont.classList.remove('hidden');
     } else if (!wasRetry) {
-      // Primer fallo: puede reintentar (puntos por esfuerzo) o rendirse.
+      // Primer fallo: solo puede reintentar (puntos por esfuerzo de MathMentor).
       state.isRetry = true;
       state.battleOutcome = false;
       $('battle-submit-btn').disabled = false;
       $('battle-submit-btn').textContent = 'Reintentar';
-      cont.textContent = 'Rendirse ▶';
-      cont.classList.remove('hidden');
     } else {
       // Segundo fallo → termina incorrecto: el adversario solo cambia de posición.
       state.battleOutcome = false;

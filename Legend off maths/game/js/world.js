@@ -4,6 +4,21 @@
    - Adversarios con IA de persecución y dificultad creciente. */
 const T = 32;
 
+// RNG con semilla (para posiciones deterministas por sala+oleada).
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
 class RoomScene extends Phaser.Scene {
   constructor() { super('RoomScene'); }
 
@@ -52,8 +67,8 @@ class RoomScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
     this.physics.add.collider(this.player, this.solids);
 
-    // Adversarios (con oleada: más malos y más rápidos)
-    this.wave = GameState.getWave(this.roomKey);
+    // Adversarios (con oleada global: más malos y más rápidos)
+    this.wave = GameState.wave();
     this.enemies = this.physics.add.group();
     this.enemyLabels = [];
     room.enemies.forEach((e, idx) => this.addEnemy(e, idx, this.wave));
@@ -73,12 +88,17 @@ class RoomScene extends Phaser.Scene {
     (room.npcs || []).forEach((n) => this.addNpc(n));
     this.physics.add.overlap(this.player, this.npcs, this.onNpcContact, null, this);
 
-    // Coleccionables (caramelos, estrellas, regalos)
+    // Coleccionables (caramelos, estrellas, regalos): posiciones aleatorias por oleada
     this.items = this.physics.add.group();
-    (room.collectibles || []).forEach((c, i) => this.addCollectible(c, i));
+    const defs = room.collectibles || [];
+    if (defs.length) {
+      const positions = this.collectiblePositions(room, defs.length);
+      defs.forEach((c, i) => {
+        const p = positions[i] || { tx: c.tx, ty: c.ty };
+        this.addCollectible({ tx: p.tx, ty: p.ty, type: c.type }, i);
+      });
+    }
     this.physics.add.overlap(this.player, this.items, this.onItemPickup, null, this);
-    // Caramelos aún por recoger en esta sala (para detectar sala completada)
-    this.itemsRemaining = (room.collectibles || []).filter((c, i) => !GameState.isCollected(this.roomKey, i)).length;
 
     // Puertas: overlap
     this.physics.add.overlap(this.player, this.doors, this.onDoorContact, null, this);
@@ -96,6 +116,11 @@ class RoomScene extends Phaser.Scene {
     this.cameras.main.fadeIn(250);
 
     this.frozen = false;
+    this._waveStarting = false;
+    // Reactiva el teclado por si la escena se reinició estando congelada (p. ej. tras
+    // una oleada global), evitando que el jugador quede bloqueado sin poder moverse.
+    this.input.keyboard.enabled = true;
+    if (this.input.keyboard.enableGlobalCapture) this.input.keyboard.enableGlobalCapture();
     this.doorCooldown = this.time.now + 500;
     // Periodo de gracia al entrar: da tiempo a orientarse antes del primer combate.
     this.contactCooldown = this.time.now + 1300;
@@ -156,6 +181,42 @@ class RoomScene extends Phaser.Scene {
     this.enemyLabels.push({ e: en, t });
   }
 
+  // Tiles ocupados por muros, mobiliario, puertas, spawn, NPCs y adversarios.
+  blockedTiles(room) {
+    const b = new Set();
+    const add = (x, y) => b.add(x + ',' + y);
+    for (let x = 0; x < room.cols; x++) { add(x, 0); add(x, room.rows - 1); }
+    for (let y = 0; y < room.rows; y++) { add(0, y); add(room.cols - 1, y); }
+    room.doors.forEach((d) => { add(d.tx, d.ty); });
+    (room.furniture || []).forEach((f) => {
+      const m = FURN_META[f.t];
+      const cx = Math.round(f.tx), cy = Math.round(f.ty);
+      if (!m) { add(cx, cy); return; }
+      const hw = Math.ceil((m.w / T) / 2), hh = Math.ceil((m.h / T) / 2);
+      for (let y = cy - hh; y <= cy + hh; y++)
+        for (let x = cx - hw; x <= cx + hw; x++) add(x, y);
+    });
+    add(Math.round(room.spawn.tx), Math.round(room.spawn.ty));
+    (room.npcs || []).forEach((n) => add(Math.round(n.tx), Math.round(n.ty)));
+    (room.enemies || []).forEach((e) => add(Math.round(e.tx), Math.round(e.ty)));
+    return b;
+  }
+
+  // Posiciones aleatorias (deterministas por sala+oleada) para los coleccionables.
+  collectiblePositions(room, count) {
+    const blocked = this.blockedTiles(room);
+    const free = [];
+    for (let y = 1; y < room.rows - 1; y++)
+      for (let x = 1; x < room.cols - 1; x++)
+        if (!blocked.has(x + ',' + y)) free.push({ tx: x, ty: y });
+    const rng = mulberry32(hashStr(this.roomKey + '#' + this.wave));
+    for (let i = free.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const tmp = free[i]; free[i] = free[j]; free[j] = tmp;
+    }
+    return free.slice(0, count);
+  }
+
   addCollectible(c, idx) {
     if (GameState.isCollected(this.roomKey, idx)) return;
     const item = this.items.create(c.tx * T + T / 2, c.ty * T + T / 2, c.type || 'candy').setDepth(6);
@@ -177,18 +238,15 @@ class RoomScene extends Phaser.Scene {
     this.tweens.add({ targets: fx, y: fx.y - 22, alpha: 0, duration: 650, onComplete: () => fx.destroy() });
     this.tweens.add({ targets: item, y: item.y - 12, scale: 1.7, alpha: 0, duration: 260, onComplete: () => item.destroy() });
 
-    // ¿Sala completada? → nueva oleada (más malos y más rápidos).
-    this.itemsRemaining--;
-    if (this.itemsRemaining <= 0 && (this.room.collectibles || []).length > 0) {
-      this.startNextWave();
-    }
+    // ¿Todos los coleccionables de TODAS las salas recogidos? → nueva oleada global.
+    if (GameState.allCollected()) this.startGlobalWave();
   }
 
-  startNextWave() {
+  startGlobalWave() {
     if (this._waveStarting) return;
     this._waveStarting = true;
-    const n = GameState.nextWave(this.roomKey);
-    UI.toast('🍬 ¡Sala completada! Oleada ' + (n + 1) + ': más malos y más rápidos.');
+    const n = GameState.nextGlobalWave();
+    UI.toast('🎉 ¡Todas las salas completadas! Dificultad ' + (n + 1) + ': más malos y más rápidos.');
     this.freeze(true);
     this.cameras.main.fadeOut(300);
     this.time.delayedCall(320, () => this.scene.restart({ room: this.roomKey, entry: null }));

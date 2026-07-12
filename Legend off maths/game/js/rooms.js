@@ -22,16 +22,23 @@ const GameState = {
     if (!this.items[room + ':' + idx]) { this.items[room + ':' + idx] = true; this.candies++; }
   },
 
-  // Oleadas por sala: al recoger todos los caramelos, la sala sube de oleada
-  // (más malos y más rápidos) y se reinician sus caramelos y adversarios.
-  waves: {},
-  getWave(room) { return this.waves[room] || 0; },
-  nextWave(room) {
-    this.waves[room] = (this.waves[room] || 0) + 1;
-    const prune = (obj) => Object.keys(obj).forEach((k) => { if (k.indexOf(room + ':') === 0) delete obj[k]; });
-    prune(this.items);      // los caramelos vuelven a aparecer
-    prune(this.defeated);   // los adversarios reaparecen
-    return this.waves[room];
+  // Oleada GLOBAL: solo al recoger TODOS los coleccionables de TODAS las salas
+  // el juego sube de dificultad (más malos y más rápidos en todas las salas) y
+  // se reinician todos los caramelos y adversarios.
+  globalWave: 0,
+  wave() { return this.globalWave; },
+  totalCollectibles() {
+    let t = 0;
+    for (const k in ROOMS) t += (ROOMS[k].collectibles || []).length;
+    return t;
+  },
+  collectedCount() { return Object.keys(this.items).length; },
+  allCollected() { return this.totalCollectibles() > 0 && this.collectedCount() >= this.totalCollectibles(); },
+  nextGlobalWave() {
+    this.globalWave++;
+    this.items = {};      // todos los caramelos reaparecen (en todas las salas)
+    this.defeated = {};   // todos los adversarios reaparecen (en todas las salas)
+    return this.globalWave;
   },
 };
 
