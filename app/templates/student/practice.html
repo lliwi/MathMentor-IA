@@ -1019,8 +1019,6 @@ body.dark-mode .cb { background: var(--bg-tertiary); }
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
 
@@ -1085,7 +1083,6 @@ document.querySelectorAll('input[name="diff"]').forEach(radio => {
     });
 });
 
-marked.setOptions({ breaks: true, gfm: true });
 mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
 
 let currentExerciseId = null;
@@ -1120,7 +1117,7 @@ function generateExercise() {
             document.getElementById('hint-btn').disabled = false;
             document.getElementById('hint-btn-text').textContent = 'Pista 1 (5 pts)';
 
-            const exerciseHTML = marked.parse(data.exercise.content);
+            const exerciseHTML = mdMath(data.exercise.content);
             document.getElementById('exercise-content').innerHTML = exerciseHTML;
             document.getElementById('exercise-topic').textContent = data.exercise.topic;
 
@@ -1271,18 +1268,18 @@ function displayFeedback(evaluation) {
             feedbackContent = '<p class="mb-3">Tu respuesta no es correcta. Intenta resolverlo de nuevo.</p>';
             actionButtons = '<button class="btn btn-primary mt-3" onclick="retryExercise()"><i class="bi bi-arrow-repeat me-1"></i> Reintentar (+3 pts por esfuerzo)</button>';
         } else {
-            const feedbackHTML = marked.parse(evaluation.feedback);
+            const feedbackHTML = mdMath(evaluation.feedback);
             feedbackContent = `
                 <div class="feedback-text markdown-content">${feedbackHTML}</div>
                 <div class="alert alert-info mt-3" style="border-radius:10px; border:none;">
                     <h6><i class="bi bi-info-circle me-1"></i>Solución:</h6>
-                    <div class="markdown-content">${evaluation.solution ? marked.parse(evaluation.solution) : 'No disponible'}</div>
+                    <div class="markdown-content">${evaluation.solution ? mdMath(evaluation.solution) : 'No disponible'}</div>
                 </div>
             `;
             actionButtons = '<button class="btn btn-outline-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle me-1"></i> Nuevo Ejercicio</button>';
         }
     } else {
-        const feedbackHTML = marked.parse(evaluation.feedback);
+        const feedbackHTML = mdMath(evaluation.feedback);
         feedbackContent = `<div class="feedback-text markdown-content">${feedbackHTML}</div>`;
         actionButtons = '<button class="btn btn-outline-secondary mt-3" onclick="newExercise()"><i class="bi bi-plus-circle me-1"></i> Nuevo Ejercicio</button>';
     }
@@ -1355,10 +1352,10 @@ async function buyHint() {
 
             if (data.hint_type === 'text') {
                 hintTitle.textContent = 'Pista 1 - Sugerencia:';
-                const p = document.createElement('p');
-                p.textContent = data.hint;
-                hintContent.innerHTML = '';
-                hintContent.appendChild(p);
+                hintContent.innerHTML = mdMath(data.hint || '');
+                if (typeof MathJax !== 'undefined') {
+                    MathJax.typesetPromise([hintContent]).catch(err => console.log('MathJax error:', err));
+                }
             } else if (data.hint_type === 'visual') {
                 hintTitle.textContent = 'Pista 2 - Esquema Visual:';
                 const mermaidId = 'mermaid-' + Date.now();
@@ -1538,7 +1535,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('points-display').textContent = data.available_points;
                 document.getElementById('summary-topic-name').textContent = data.topic_name;
                 document.getElementById('summary-source').textContent = data.source || 'Fuente desconocida';
-                const summaryHtml = marked.parse(data.summary);
+                const summaryHtml = mdMath(data.summary);
                 document.getElementById('summary-content').innerHTML = summaryHtml;
                 if (window.MathJax) MathJax.typesetPromise([document.getElementById('summary-content')]);
                 summaryModal.show();

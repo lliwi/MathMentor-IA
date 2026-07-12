@@ -269,19 +269,11 @@ function deleteSummary() {
 // Render Markdown content on page load
 document.addEventListener('DOMContentLoaded', function() {
     const markdownContent = {{ summary.content|tojson|safe }};
-    const renderedHtml = marked.parse(markdownContent);
-    document.getElementById('markdown-content').innerHTML = renderedHtml;
-
-    // Render LaTeX if MathJax is available
-    if (typeof MathJax !== 'undefined') {
-        MathJax.typesetPromise([document.getElementById('markdown-content')])
-            .catch((err) => console.log('MathJax error:', err));
-    }
+    const markdownEl = document.getElementById('markdown-content');
+    markdownEl.innerHTML = mdMath(markdownContent);
+    typesetMath(markdownEl);
 });
 </script>
-
-<!-- Marked.js for Markdown rendering -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <style>
 .markdown-content {

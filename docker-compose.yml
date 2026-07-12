@@ -23,8 +23,7 @@ services:
     image: brainicism/bgutil-ytdlp-pot-provider:latest
     container_name: mathmentor_bgutil_pot
     restart: unless-stopped
-    networks:
-      - mathmentor_network
+
 
   redis:
     image: redis:7-alpine

@@ -123,10 +123,12 @@
 .summary-card .sc-footer {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.5rem;
 }
 
 .btn-view-summary {
-    width: 100%;
+    flex: 1;
     padding: 0.7rem 1rem;
     border-radius: 12px;
     border: none;
@@ -144,6 +146,28 @@
 
 .btn-view-summary:hover {
     opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-download-summary {
+    padding: 0.7rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-download-summary:hover {
+    border-color: #ef4444;
+    background: rgba(239,68,68,0.06);
     transform: translateY(-1px);
 }
 
@@ -353,6 +377,11 @@
                     data-topic-name="{{ data.topic.topic_name if data.topic else 'Resumen' }}">
                 <i class="bi bi-eye"></i> Ver Resumen
             </button>
+            <a class="btn-download-summary"
+               href="{{ url_for('student.summary_pdf', summary_id=data.summary.id) }}"
+               target="_blank" rel="noopener" title="Descargar como PDF">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+            </a>
         </div>
     </div>
     {% endfor %}
@@ -393,6 +422,9 @@
                 <div id="summary-content" class="markdown-content"></div>
             </div>
             <div class="modal-footer" style="border-top: 1px solid var(--border-color); background: var(--bg-secondary);">
+                <a id="modal-download-pdf" class="btn-es primary" href="#" target="_blank" rel="noopener">
+                    <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
+                </a>
                 <button type="button" class="btn-es secondary" data-bs-dismiss="modal">
                     <i class="bi bi-x"></i> Cerrar
                 </button>
@@ -401,7 +433,6 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 // Store summary content safely
 const summaryContents = {
@@ -409,6 +440,8 @@ const summaryContents = {
     {{ data.summary.id }}: {{ data.summary.content|tojson|safe }}{{ "," if not loop.last else "" }}
     {% endfor %}
 };
+
+const pdfUrlTemplate = "{{ url_for('student.summary_pdf', summary_id=0) }}";
 
 document.addEventListener('DOMContentLoaded', function() {
     const summaryModal = new bootstrap.Modal(document.getElementById('summaryModal'));
@@ -426,14 +459,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             document.getElementById('summary-topic-name').textContent = topicName;
+            document.getElementById('modal-download-pdf').href = pdfUrlTemplate.replace(/\/0\/pdf$/, '/' + summaryId + '/pdf');
 
-            const summaryHtml = marked.parse(content);
-            document.getElementById('summary-content').innerHTML = summaryHtml;
-
-            if (typeof MathJax !== 'undefined') {
-                MathJax.typesetPromise([document.getElementById('summary-content')])
-                    .catch((err) => console.log('MathJax error:', err));
-            }
+            const summaryContentEl = document.getElementById('summary-content');
+            summaryContentEl.innerHTML = mdMath(content);
+            typesetMath(summaryContentEl);
 
             summaryModal.show();
         });

@@ -89,7 +89,7 @@
                             <td>{{ exercise.id }}</td>
                             <td>
                                 <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                    {{ exercise.content[:100] }}...
+                                    {{ exercise.content | strip_md | truncate(100, True) }}
                                 </div>
                             </td>
                             <td>

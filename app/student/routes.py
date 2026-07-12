@@ -885,3 +885,27 @@ def my_summaries():
     return render_template('student/my_summaries.html',
                          summaries_data=summaries_data)
 
+
+@student_bp.route('/summary/<int:summary_id>/pdf')
+@student_required
+def summary_pdf(summary_id):
+    """Printable view of a purchased summary (browser 'Save as PDF')"""
+    from app.models.summary import Summary
+    from app.models.summary_usage import SummaryUsage
+
+    # Only allow if the student has actually accessed/purchased this summary
+    usage = SummaryUsage.query.filter_by(
+        student_id=current_user.id,
+        summary_id=summary_id
+    ).first()
+    if not usage:
+        flash('No tienes acceso a este resumen.', 'error')
+        return redirect(url_for('student.my_summaries'))
+
+    summary = Summary.query.get_or_404(summary_id)
+    topic = Topic.query.get(summary.topic_id)
+
+    return render_template('student/summary_print.html',
+                         summary=summary,
+                         topic=topic)
+

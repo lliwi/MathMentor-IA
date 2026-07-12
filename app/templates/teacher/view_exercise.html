@@ -197,13 +197,30 @@
 <script>
 const exerciseId = {{ exercise.id }};
 
+// Fuente markdown en crudo por campo (usada para editar y guardar)
+const rawFields = {
+    content: {{ exercise.content|tojson }},
+    solution: {{ exercise.solution|tojson }},
+    methodology: {{ (exercise.methodology or 'No especificada')|tojson }}
+};
+
+function renderField(field) {
+    const displayDiv = document.getElementById(`${field}-display`);
+    displayDiv.innerHTML = mdMath(rawFields[field] || '');
+    typesetMath(displayDiv);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    ['content', 'solution', 'methodology'].forEach(renderField);
+});
+
 function editField(field) {
     const displayDiv = document.getElementById(`${field}-display`);
-    const currentValue = displayDiv.textContent.trim();
+    const currentValue = rawFields[field] || '';
 
     const textarea = document.createElement('textarea');
     textarea.className = 'form-control';
-    textarea.rows = 5;
+    textarea.rows = 8;
     textarea.value = currentValue;
     textarea.id = `${field}-edit`;
 
@@ -218,7 +235,7 @@ function editField(field) {
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'btn btn-sm btn-secondary mt-2';
     cancelBtn.innerHTML = '<i class="bi bi-x"></i> Cancelar';
-    cancelBtn.onclick = () => cancelFieldEdit(field, currentValue);
+    cancelBtn.onclick = () => cancelFieldEdit(field);
 
     displayDiv.appendChild(saveBtn);
     displayDiv.appendChild(cancelBtn);
@@ -226,33 +243,18 @@ function editField(field) {
 
 function saveFieldEdit(field) {
     const textarea = document.getElementById(`${field}-edit`);
-    const newValue = textarea.value;
-
-    const displayDiv = document.getElementById(`${field}-display`);
-    displayDiv.innerHTML = newValue;
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-primary mt-2';
-    editBtn.innerHTML = '<i class="bi bi-pencil"></i> Editar';
-    editBtn.onclick = () => editField(field);
-    displayDiv.appendChild(editBtn);
+    rawFields[field] = textarea.value;
+    renderField(field);
 }
 
-function cancelFieldEdit(field, originalValue) {
-    const displayDiv = document.getElementById(`${field}-display`);
-    displayDiv.innerHTML = originalValue;
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-primary mt-2';
-    editBtn.innerHTML = '<i class="bi bi-pencil"></i> Editar';
-    editBtn.onclick = () => editField(field);
-    displayDiv.appendChild(editBtn);
+function cancelFieldEdit(field) {
+    renderField(field);
 }
 
 function saveChanges() {
-    const content = document.getElementById('content-display').textContent.trim();
-    const solution = document.getElementById('solution-display').textContent.trim();
-    const methodology = document.getElementById('methodology-display').textContent.trim();
+    const content = rawFields.content;
+    const solution = rawFields.solution;
+    const methodology = rawFields.methodology;
     const notes = document.getElementById('modification-notes').value;
 
     fetch(`/teacher/exercise/${exerciseId}/edit`, {

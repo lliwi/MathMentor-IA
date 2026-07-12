@@ -83,7 +83,7 @@
                             </td>
                             <td>
                                 <div style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                    {{ summary.content[:100] }}{% if summary.content|length > 100 %}...{% endif %}
+                                    {{ summary.content | strip_md | truncate(100, True) }}
                                 </div>
                             </td>
                             <td>

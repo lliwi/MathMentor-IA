@@ -62,6 +62,23 @@ def create_app(config_name=None):
     app.register_blueprint(student_bp, url_prefix='/student')
     app.register_blueprint(teacher_bp, url_prefix='/teacher')
 
+    # Jinja filter: quita la sintaxis Markdown/LaTeX para previsualizaciones en texto plano
+    import re as _re
+
+    @app.template_filter('strip_md')
+    def strip_md(text):
+        if not text:
+            return ''
+        s = str(text)
+        s = _re.sub(r'`{1,3}', '', s)              # code / code spans
+        s = _re.sub(r'\*\*|\*|__|_|~~', '', s)      # bold / italic / strikethrough
+        s = _re.sub(r'^\s{0,3}#{1,6}\s*', '', s, flags=_re.MULTILINE)  # headings
+        s = _re.sub(r'^\s{0,3}>\s?', '', s, flags=_re.MULTILINE)       # blockquotes
+        s = _re.sub(r'!?\[([^\]]*)\]\([^)]*\)', r'\1', s)             # links / images
+        s = _re.sub(r'\${1,2}', '', s)             # LaTeX $ / $$ delimiters
+        s = _re.sub(r'\s+', ' ', s)                # colapsa espacios y saltos
+        return s.strip()
+
     # Home route
     @app.route('/')
     def index():

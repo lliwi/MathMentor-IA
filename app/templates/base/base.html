@@ -11,6 +11,54 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
+
+    <!-- Markdown + LaTeX rendering (global) -->
+    <script>
+        // MathJax config: soporta $...$ y $$...$$ además de \(...\) y \[...\]
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        marked.setOptions({ breaks: true, gfm: true });
+
+        // Convierte markdown a HTML protegiendo las fórmulas LaTeX para que
+        // marked no las altere (subíndices _, comandos \, etc.).
+        window.mdMath = function (text) {
+            text = text || '';
+            const store = [];
+            const stash = (m) => '@@MJX' + (store.push(m) - 1) + '@@';
+            // Orden importante: bloques antes que inline
+            text = text.replace(/\$\$[\s\S]+?\$\$/g, stash);
+            text = text.replace(/\\\[[\s\S]+?\\\]/g, stash);
+            text = text.replace(/\\\([\s\S]+?\\\)/g, stash);
+            text = text.replace(/\$(?![\s$])(?:\\\$|[^$\n])+?\$/g, stash);
+            let html = marked.parse(text);
+            html = html.replace(/@@MJX(\d+)@@/g, (m, i) => store[Number(i)]);
+            return html;
+        };
+
+        // Renderiza las fórmulas de un elemento (espera a que MathJax cargue).
+        window.typesetMath = function (el) {
+            if (!window.MathJax) return;
+            const run = () => MathJax.typesetPromise(el ? [el] : undefined)
+                .catch((e) => console.log('MathJax error:', e));
+            if (MathJax.startup && MathJax.startup.promise) {
+                MathJax.startup.promise.then(run);
+            } else if (MathJax.typesetPromise) {
+                run();
+            }
+        };
+    </script>
 </head>
 <body>
     {% if current_user.is_authenticated %}
