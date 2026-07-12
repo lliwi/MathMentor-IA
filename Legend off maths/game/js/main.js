@@ -5,13 +5,18 @@
   function startGame() {
     if (game) return;
     game = new Phaser.Game(GAME_CONFIG);
+    window.game = game; // acceso para depuración
     // Refresca puntos/racha periódicamente por si cambian fuera de batalla.
     setInterval(() => { if (!UI.isBusy()) UI.refreshMe(); }, 20000);
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    if (window.mermaid) {
+      window.mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+    }
     UI.initBattle();
     UI.initShop();
+    UI.initDiagram();
     UI.initLogin(startGame);
 
     // Si ya hay sesión activa (cookie), saltar el login.

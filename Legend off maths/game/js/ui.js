@@ -58,6 +58,18 @@ const UI = (() => {
     if (stats.available_points !== undefined) $('shop-points').textContent = stats.available_points;
   }
 
+  function setRoom(name, tier) {
+    const lvl = document.getElementById('hud-level');
+    const rn = document.getElementById('hud-roomname');
+    if (lvl) lvl.textContent = (tier || 0) + 1;
+    if (rn) rn.textContent = name || '';
+  }
+
+  function setCandies(n) {
+    const el = document.getElementById('hud-candy');
+    if (el) el.textContent = n || 0;
+  }
+
   async function refreshMe() {
     const data = await API.me();
     if (data.success) {
@@ -116,9 +128,11 @@ const UI = (() => {
     renderExercise(res.exercise);
     $('battle-loading').classList.add('hidden');
     $('battle-body').classList.remove('hidden');
+    setTimeout(() => $('battle-answer').focus(), 50);
   }
 
   function resetBattleControls() {
+    state.battleOutcome = null;
     $('battle-answer').value = '';
     $('battle-hint').classList.add('hidden');
     $('battle-hint').textContent = '';
@@ -128,6 +142,7 @@ const UI = (() => {
     $('battle-submit-btn').disabled = false;
     $('battle-submit-btn').textContent = 'Responder';
     $('battle-continue-btn').classList.add('hidden');
+    $('battle-continue-btn').textContent = 'Continuar ▶';
     $('battle-hint-btn').disabled = false;
   }
 
@@ -169,6 +184,7 @@ const UI = (() => {
     const answer = $('battle-answer').value.trim();
     if (!answer) { toast('Escribe una respuesta'); return; }
 
+    const wasRetry = state.isRetry;
     $('battle-submit-btn').disabled = true;
     $('battle-submit-btn').textContent = 'Corrigiendo…';
 
@@ -176,7 +192,7 @@ const UI = (() => {
       exercise_id: ex.id,
       answer,
       selected_procedures: selectedProcedures(),
-      is_retry: state.isRetry,
+      is_retry: wasRetry,
     });
 
     if (!res.success) {
@@ -189,16 +205,30 @@ const UI = (() => {
     const ev = res.evaluation;
     setStats({ available_points: ev.available_points, current_streak: ev.current_streak });
     showFeedback(ev);
+    const cont = $('battle-continue-btn');
 
     if (ev.is_correct) {
+      // Correcto → el adversario será derrotado (desaparece).
+      state.battleOutcome = true;
       $('battle-submit-btn').classList.add('hidden');
       $('battle-hint-btn').disabled = true;
-      $('battle-continue-btn').classList.remove('hidden');
-    } else {
-      // Permitir un reintento (puntos por esfuerzo los gestiona MathMentor)
+      cont.textContent = '¡Vencido! Continuar ▶';
+      cont.classList.remove('hidden');
+    } else if (!wasRetry) {
+      // Primer fallo: puede reintentar (puntos por esfuerzo) o rendirse.
       state.isRetry = true;
+      state.battleOutcome = false;
       $('battle-submit-btn').disabled = false;
       $('battle-submit-btn').textContent = 'Reintentar';
+      cont.textContent = 'Rendirse ▶';
+      cont.classList.remove('hidden');
+    } else {
+      // Segundo fallo → termina incorrecto: el adversario solo cambia de posición.
+      state.battleOutcome = false;
+      $('battle-submit-btn').classList.add('hidden');
+      $('battle-hint-btn').disabled = true;
+      cont.textContent = 'Continuar ▶';
+      cont.classList.remove('hidden');
     }
   }
 
@@ -225,11 +255,67 @@ const UI = (() => {
       return;
     }
     const box = $('battle-hint');
-    renderRich(box, '💡 ' + res.hint);
     box.classList.remove('hidden');
+    // Cada pista se añade como un bloque nuevo debajo del anterior (no lo reemplaza).
+    const block = document.createElement('div');
+    block.className = 'hint-block';
+    box.appendChild(block);
+    if (res.hint_type === 'visual') {
+      await renderVisualHint(block, res.hint);
+    } else {
+      renderRich(block, '💡 **Pista ' + (res.hint_level || 1) + ':** ' + res.hint);
+    }
     setStats({ available_points: res.available_points });
     if (res.hints_remaining <= 0) $('battle-hint-btn').disabled = true;
     else $('battle-hint-btn').disabled = false;
+  }
+
+  // La 2ª pista es un diagrama Mermaid (graph TD ...). Se renderiza a SVG.
+  async function renderVisualHint(box, code) {
+    box.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'hint-title';
+    title.innerHTML = '<span>💡 Esquema visual</span>';
+    box.appendChild(title);
+    const clean = String(code || '').replace(/```mermaid/gi, '').replace(/```/g, '').trim();
+    try {
+      if (!window.mermaid) throw new Error('mermaid no disponible');
+      const id = 'mmd-' + Date.now();
+      const { svg } = await window.mermaid.render(id, clean);
+      const wrap = document.createElement('div');
+      wrap.className = 'mermaid-svg';
+      wrap.innerHTML = svg;
+      wrap.title = 'Clic para ampliar';
+      wrap.addEventListener('click', () => openDiagram(svg));
+      box.appendChild(wrap);
+      const zoom = document.createElement('span');
+      zoom.className = 'zoom-hint';
+      zoom.textContent = '🔍 Clic para ampliar';
+      title.appendChild(zoom);
+    } catch (e) {
+      const pre = document.createElement('pre');
+      pre.className = 'hint-pre';
+      pre.textContent = clean;
+      box.appendChild(pre);
+    }
+  }
+
+  function openDiagram(svg) {
+    $('diagram-content').innerHTML = svg;
+    $('diagram-overlay').classList.remove('hidden');
+  }
+  function closeDiagram() {
+    $('diagram-overlay').classList.add('hidden');
+    $('diagram-content').innerHTML = '';
+  }
+  function initDiagram() {
+    $('diagram-close-btn').addEventListener('click', closeDiagram);
+    $('diagram-overlay').addEventListener('click', (e) => {
+      if (e.target === $('diagram-overlay')) closeDiagram(); // clic en el fondo
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('diagram-overlay').classList.contains('hidden')) closeDiagram();
+    });
   }
 
   function endBattle(defeated) {
@@ -242,7 +328,7 @@ const UI = (() => {
   function initBattle() {
     $('battle-submit-btn').addEventListener('click', submitBattle);
     $('battle-hint-btn').addEventListener('click', buyHintBattle);
-    $('battle-continue-btn').addEventListener('click', () => endBattle(true));
+    $('battle-continue-btn').addEventListener('click', () => endBattle(state.battleOutcome === true));
   }
 
   // ---------------------------------------------------------------- TIENDA
@@ -343,5 +429,5 @@ const UI = (() => {
            !$('shop-overlay').classList.contains('hidden');
   }
 
-  return { initLogin, initBattle, initShop, refreshMe, startBattle, openShop, toast, isBusy };
+  return { initLogin, initBattle, initShop, initDiagram, refreshMe, startBattle, openShop, toast, isBusy, setRoom, setCandies };
 })();

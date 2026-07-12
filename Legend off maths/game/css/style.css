@@ -79,7 +79,7 @@ html, body {
   width: min(420px, 92vw);
   box-shadow: 0 20px 60px rgba(0,0,0,.5);
 }
-.panel.wide { width: min(640px, 94vw); max-height: 90vh; overflow-y: auto; }
+.panel.wide { width: min(1120px, 95vw); max-height: 92vh; overflow-y: auto; }
 
 .panel h1 { font-size: 28px; text-align: center; }
 .panel h2 { font-size: 22px; }
@@ -169,6 +169,24 @@ input:focus, textarea:focus { outline: 2px solid var(--accent); border-color: tr
   margin-bottom: 12px;
   white-space: pre-wrap;
   font-size: 14px;
+}
+.hint-block + .hint-block { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.hint-title { font-weight: 700; margin-bottom: 8px; color: var(--accent-2); display: flex; justify-content: space-between; align-items: center; }
+.hint-title .zoom-hint { font-size: 12px; font-weight: 600; color: var(--muted); }
+.mermaid-svg { text-align: center; overflow-x: auto; cursor: zoom-in; border-radius: 8px; transition: filter .15s; }
+.mermaid-svg:hover { filter: brightness(1.08); }
+.mermaid-svg svg { max-width: 100%; height: auto; }
+
+/* Modal de diagrama ampliado */
+.diagram-panel { width: min(96vw, 1400px); max-height: 94vh; }
+.diagram-content {
+  overflow: auto; text-align: center; background: #1e1930;
+  border-radius: 8px; padding: 16px; max-height: 82vh;
+}
+.diagram-content svg { width: 100%; height: auto; min-width: 680px; }
+.hint-pre {
+  white-space: pre; overflow-x: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px; background: #1e1930; padding: 10px; border-radius: 6px;
 }
 .feedback {
   padding: 12px 14px;
