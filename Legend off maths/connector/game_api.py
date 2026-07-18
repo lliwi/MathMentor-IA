@@ -161,11 +161,16 @@ def init_game_static(app, game_root):
     """Sirve el cliente Phaser en /legend (mismo origen → la cookie de sesión se comparte)."""
     game_dir = Path(game_root) / 'game'
 
+    def _no_cache(resp):
+        # Evita que el navegador sirva JS/CSS del juego cacheado (siempre revalida).
+        resp.headers['Cache-Control'] = 'no-cache'
+        return resp
+
     @app.route('/legend')
     @app.route('/legend/')
     def legend_index():
-        return send_from_directory(game_dir, 'index.html')
+        return _no_cache(send_from_directory(game_dir, 'index.html'))
 
     @app.route('/legend/<path:filename>')
     def legend_static(filename):
-        return send_from_directory(game_dir, filename)
+        return _no_cache(send_from_directory(game_dir, filename))

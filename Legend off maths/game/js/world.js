@@ -83,10 +83,10 @@ class RoomScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.solids);
     this.physics.add.overlap(this.player, this.enemies, this.onEnemyContact, null, this);
 
-    // NPCs (empollón)
+    // NPCs (empollón). La tienda se abre por detección de proximidad en update()
+    // (solo al ACERCARSE), no con overlap continuo, para no reabrirse si te quedas encima.
     this.npcs = this.physics.add.staticGroup();
     (room.npcs || []).forEach((n) => this.addNpc(n));
-    this.physics.add.overlap(this.player, this.npcs, this.onNpcContact, null, this);
 
     // Coleccionables (caramelos, estrellas, regalos): posiciones aleatorias por oleada
     this.items = this.physics.add.group();
@@ -124,7 +124,8 @@ class RoomScene extends Phaser.Scene {
     this.doorCooldown = this.time.now + 500;
     // Periodo de gracia al entrar: da tiempo a orientarse antes del primer combate.
     this.contactCooldown = this.time.now + 1300;
-    this.npcReady = true;
+    this.npcCooldown = 0;
+    this.npcTouching = false;
 
     if (window.UI) { UI.setRoom(room.name, GameState.tier()); UI.setCandies(GameState.candies); }
   }
@@ -286,17 +287,15 @@ class RoomScene extends Phaser.Scene {
     this.time.delayedCall(210, () => this.scene.restart({ room: d.to, entry: d.toDoor }));
   }
 
-  onNpcContact() {
-    // npcReady se rearma en update() solo cuando el jugador se aleja del empollón,
-    // así al cerrar la tienda no se vuelve a abrir mientras sigues encima de él.
-    if (UI.isBusy() || !this.npcReady) return;
-    this.npcReady = false;
+  openNerdShop() {
     this.freeze(true);
     UI.openShop();
     const check = this.time.addEvent({
       delay: 200, loop: true, callback: () => {
         if (document.getElementById('shop-overlay').classList.contains('hidden')) {
           this.freeze(false);
+          // Desactiva al empollón unos segundos tras cerrar, para poder alejarte.
+          this.npcCooldown = this.time.now + 3000;
           check.remove();
         }
       },
@@ -354,6 +353,10 @@ class RoomScene extends Phaser.Scene {
     } else {
       kb.enabled = true;
       if (kb.enableGlobalCapture) kb.enableGlobalCapture();
+      // Limpia estados de tecla "pegados": si soltaste una tecla mientras el teclado
+      // estaba desactivado (modal abierto), Phaser se perdió el keyup y creería que
+      // sigue pulsada, empujando al jugador (p. ej. contra la pared al salir del empollón).
+      if (kb.resetKeys) kb.resetKeys();
     }
   }
 
@@ -374,13 +377,18 @@ class RoomScene extends Phaser.Scene {
     this.player.setVelocity(vx, vy);
     if (vx < 0) this.player.setFlipX(true); else if (vx > 0) this.player.setFlipX(false);
 
-    // Rearma al empollón cuando el jugador se aleja lo suficiente.
-    if (this.npcs && !this.npcReady) {
-      let clear = true;
+    // Empollón: abre la tienda SOLO al acercarse (flanco de entrada) y si no está en
+    // cooldown. Si te quedas encima tras cerrar, no se reabre (npcTouching sigue true);
+    // debes salir de su radio y volver a entrar.
+    if (this.npcs) {
+      let touching = false;
       this.npcs.getChildren().forEach((n) => {
-        if (Phaser.Math.Distance.Between(n.x, n.y, this.player.x, this.player.y) < 34) clear = false;
+        if (Phaser.Math.Distance.Between(n.x, n.y, this.player.x, this.player.y) < 26) touching = true;
       });
-      if (clear) this.npcReady = true;
+      if (touching && !this.npcTouching && !UI.isBusy() && this.time.now >= this.npcCooldown) {
+        this.openNerdShop();
+      }
+      this.npcTouching = touching;
     }
 
     // IA de adversarios: persiguen si el jugador está cerca; si no, deambulan.
