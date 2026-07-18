@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Legend of Maths</title>
   <link rel="stylesheet" href="/legend/css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -95,6 +95,16 @@
           <button id="diagram-close-btn" class="btn ghost">Cerrar ✕</button>
         </div>
         <div id="diagram-content" class="diagram-content"></div>
+      </div>
+    </div>
+
+    <!-- Mando virtual (solo en dispositivos táctiles) -->
+    <div id="touch-controls" class="hidden">
+      <div class="dpad">
+        <button class="dbtn dbtn-up" data-dir="up" aria-label="Arriba">▲</button>
+        <button class="dbtn dbtn-left" data-dir="left" aria-label="Izquierda">◀</button>
+        <button class="dbtn dbtn-right" data-dir="right" aria-label="Derecha">▶</button>
+        <button class="dbtn dbtn-down" data-dir="down" aria-label="Abajo">▼</button>
       </div>
     </div>
 

@@ -347,6 +347,8 @@ class RoomScene extends Phaser.Scene {
     if (on) {
       this.player.setVelocity(0, 0);
       this.enemies.getChildren().forEach((e) => e.active && e.setVelocity(0, 0));
+      window.LegendInput.up = window.LegendInput.down = window.LegendInput.left = window.LegendInput.right = false;
+      if (window.LegendUI && window.LegendUI.clearDpad) window.LegendUI.clearDpad();
       kb.enabled = false;
       if (kb.disableGlobalCapture) kb.disableGlobalCapture();
     } else {
@@ -361,13 +363,14 @@ class RoomScene extends Phaser.Scene {
 
     if (this.frozen) { this.player.setVelocity(0, 0); return; }
 
-    // Movimiento del jugador
+    // Movimiento del jugador (teclado + D-pad táctil en window.LegendInput)
     const speed = 180;
+    const t = window.LegendInput || {};
     let vx = 0, vy = 0;
-    if (this.cursors.left.isDown || this.wasd.A.isDown) vx = -speed;
-    else if (this.cursors.right.isDown || this.wasd.D.isDown) vx = speed;
-    if (this.cursors.up.isDown || this.wasd.W.isDown) vy = -speed;
-    else if (this.cursors.down.isDown || this.wasd.S.isDown) vy = speed;
+    if (this.cursors.left.isDown || this.wasd.A.isDown || t.left) vx = -speed;
+    else if (this.cursors.right.isDown || this.wasd.D.isDown || t.right) vx = speed;
+    if (this.cursors.up.isDown || this.wasd.W.isDown || t.up) vy = -speed;
+    else if (this.cursors.down.isDown || this.wasd.S.isDown || t.down) vy = speed;
     this.player.setVelocity(vx, vy);
     if (vx < 0) this.player.setFlipX(true); else if (vx > 0) this.player.setFlipX(false);
 
@@ -395,13 +398,21 @@ class RoomScene extends Phaser.Scene {
   }
 }
 
+// Estado del D-pad táctil (lo escribe la UI, lo lee el bucle de movimiento).
+window.LegendInput = window.LegendInput || { up: false, down: false, left: false, right: false };
+
 const GAME_CONFIG = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: 832,
-  height: 576,
   backgroundColor: '#0f0b14',
   pixelArt: true,
+  // Escala responsiva: se adapta a móvil/tablet manteniendo la proporción.
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 832,
+    height: 576,
+  },
   physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
   scene: [RoomScene],
 };

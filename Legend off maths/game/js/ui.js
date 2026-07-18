@@ -70,6 +70,38 @@ const UI = (() => {
     if (el) el.textContent = n || 0;
   }
 
+  // ---- Mando virtual táctil (D-pad) ----
+  function isTouchDevice() {
+    return window.matchMedia('(pointer: coarse)').matches ||
+           'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+  function clearDpad() {
+    window.LegendInput = window.LegendInput || {};
+    ['up', 'down', 'left', 'right'].forEach((d) => { window.LegendInput[d] = false; });
+    document.querySelectorAll('#touch-controls .dbtn').forEach((b) => b.classList.remove('active'));
+  }
+  function initTouch() {
+    window.LegendInput = window.LegendInput || { up: false, down: false, left: false, right: false };
+    window.LegendUI = window.LegendUI || {};
+    window.LegendUI.clearDpad = clearDpad;
+    const tc = document.getElementById('touch-controls');
+    if (!tc) return false;
+    tc.querySelectorAll('.dbtn').forEach((btn) => {
+      const dir = btn.dataset.dir;
+      const press = (e) => { e.preventDefault(); window.LegendInput[dir] = true; btn.classList.add('active'); };
+      const release = (e) => { if (e) e.preventDefault(); window.LegendInput[dir] = false; btn.classList.remove('active'); };
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointercancel', release);
+      btn.addEventListener('pointerleave', release);
+      btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    });
+    return isTouchDevice();
+  }
+  function showTouchControls() {
+    if (isTouchDevice()) document.getElementById('touch-controls').classList.remove('hidden');
+  }
+
   async function refreshMe() {
     const data = await API.me();
     if (data.success) {
@@ -427,5 +459,5 @@ const UI = (() => {
            !$('shop-overlay').classList.contains('hidden');
   }
 
-  return { initLogin, initBattle, initShop, initDiagram, refreshMe, startBattle, openShop, toast, isBusy, setRoom, setCandies };
+  return { initLogin, initBattle, initShop, initDiagram, initTouch, showTouchControls, refreshMe, startBattle, openShop, toast, isBusy, setRoom, setCandies };
 })();

@@ -6,6 +6,7 @@
     if (game) return;
     game = new Phaser.Game(GAME_CONFIG);
     window.game = game; // acceso para depuración
+    UI.showTouchControls(); // muestra el D-pad en dispositivos táctiles
     // Refresca puntos/racha periódicamente por si cambian fuera de batalla.
     setInterval(() => { if (!UI.isBusy()) UI.refreshMe(); }, 20000);
   }
@@ -17,6 +18,7 @@
     UI.initBattle();
     UI.initShop();
     UI.initDiagram();
+    UI.initTouch();
     UI.initLogin(startGame);
 
     // Si ya hay sesión activa (cookie), saltar el login.

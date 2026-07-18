@@ -223,6 +223,44 @@ input:focus, textarea:focus { outline: 2px solid var(--accent); border-color: tr
   max-height: 40vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; font-size: 14px;
 }
 
+/* Mando virtual táctil */
+#touch-controls {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 25;
+  opacity: 0.85;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: 4px;
+}
+.dbtn {
+  border: none;
+  border-radius: 12px;
+  background: rgba(47, 35, 64, 0.72);
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  border: 1px solid var(--border);
+  backdrop-filter: blur(2px);
+}
+.dbtn.active { background: var(--accent); border-color: var(--accent); }
+.dbtn-up    { grid-column: 2; grid-row: 1; }
+.dbtn-left  { grid-column: 1; grid-row: 2; }
+.dbtn-right { grid-column: 3; grid-row: 2; }
+.dbtn-down  { grid-column: 2; grid-row: 3; }
+
 /* Toast */
 .toast {
   position: absolute;
